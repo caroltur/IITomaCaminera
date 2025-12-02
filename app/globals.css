@@ -139,8 +139,13 @@
   background-image: url(/banner.png);
   background-size: 100% 90%;
   background-repeat: no-repeat !important;
-.LogoResponsib{
-  background-image: url(/bannerMovil.jpeg);
+@media (max-width: 768px) {
+  .LogoResponsib {
+    /* Nueva imagen solo para pantallas de 768px o menos */
+    background-image: url(/bannerMovil.jpeg); 
+    /* Ajusta el tamaño si el bannerMovil es más alto */
+    background-size: cover; 
+  }
 }
 
 .texto-resaltado {
