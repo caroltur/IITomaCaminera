@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { CalendarIcon } from 'lucide-react';
 import { useForm } from "react-hook-form"
 import { firebaseClient } from "@/lib/firebase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -448,8 +449,18 @@ export default function InscripcionPage() {
       setLoading(false)
     }
   }*/
+const fechaInicioInscripciones = new Date(2026, 0, 1); // Mes 0 es Enero, día 1
 
+// Obtiene la fecha y hora actual
+const fechaActual = new Date();
+
+// Comprueba si la fecha actual es posterior o igual a la fecha de inicio
+const inscripcionesAbiertas = fechaActual >= fechaInicioInscripciones;
   return (
+  inscripcionesAbiertas ? (
+    // ----------------------------------------------------------------
+    // 1. BLOQUE VERDADERO: FORMULARIO (Inscripciones Abiertas)
+    // ----------------------------------------------------------------
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4 mb-8">
               <Button
@@ -472,7 +483,7 @@ export default function InscripcionPage() {
             </p>
           </div>
 
-          {/* Paso 1: Verificación */}
+           {/* Paso 1: Verificación  */}
           {verificationStep === "verify" && (
             <Card>
               <CardHeader>
@@ -912,5 +923,47 @@ export default function InscripcionPage() {
         </div>
       </div>
     </div>
+  ) : (
+    // ----------------------------------------------------------------
+    // 2. BLOQUE FALSO: MENSAJE (Inscripciones Cerradas)
+    // ----------------------------------------------------------------
+    <div className="flex items-center justify-center min-h-screen bg-slate-900 p-4">
+  <div className="
+    bg-white 
+    p-10 md:p-16 
+    rounded-2xl 
+    shadow-2xl 
+    text-center 
+    max-w-md 
+    w-full 
+    transform 
+    hover:scale-[1.01] 
+    transition-transform 
+    duration-300
+    border-t-4 border-green-500
+  ">
+    {/* Icono (requiere importar un componente de icono) */}
+    {/* Asegúrate de importar CalendarIcon de tu librería preferida (ej. Lucide React) */}
+    <CalendarIcon className="h-12 w-12 text-green-600 mx-auto mb-4 animate-pulse" /> 
+
+    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3 uppercase">
+      ¡INSCRIPCIONES PRÓXIMAMENTE!
+    </h1>
+
+
+    <div className="
+      inline-block 
+      bg-green-100 
+      text-green-800 
+      font-bold 
+      py-2 px-4 
+      rounded-full 
+      text-xl
+    ">
+      Apertura: 1 DE ENERO DE 2026
+    </div>
+  </div>
+</div>
   )
+);
 }

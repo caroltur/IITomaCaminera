@@ -135,15 +135,12 @@
     /* Para un borde más grueso, puedes añadir más sombras */
 }
 .LogoResponsib {
-  background-image: url(/logo.png);
-  background-size: 100% 100%;
-  background-position: center;
-  background-repeat: no-repeat;
-
-}
-@media (max-width: 768px) {
+  background-color: white !important;
+  background-image: url(/banner.png);
+  background-size: 100% 90%;
+  background-repeat: no-repeat !important;
 .LogoResponsib{
-  background-image: url(/logomovil.jpeg);
+  background-image: url(/banner.png);
 }
 
 .texto-resaltado {

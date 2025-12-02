@@ -103,7 +103,7 @@ export default function ReservationInfo() {
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                   <p className="text-green-800 font-semibold text-lg">
-                    $90.000 COP
+                    $80.000 COP
                   </p>
                   <p className="text-green-700 text-sm">Por persona para grupos de mas de 12 personas</p>
                 </div>

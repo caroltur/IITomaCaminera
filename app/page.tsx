@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import {  Calendar, Users } from "lucide-react"
 import HeroSection from "@/components/hero-section"
 import FeaturedRoutes from "@/components/featured-routes"
-import EventSchedule from "@/components/event-schedule"
+//import EventSchedule from "@/components/event-schedule"
 import ReservationInfo from "@/components/reservation-info"
 
 export default function Home() {
@@ -12,7 +12,7 @@ export default function Home() {
       <header className="bg-white shadow-sm sticky top-0 z-10" style={{zIndex: 1000}}>
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-green-700">
-            Villamaría Caldas
+            Carolina del Príncipe
           </Link>
           <nav className="hidden md:flex space-x-6">
             <Link href="/#rutas" className="text-gray-600 hover:text-green-700">
@@ -61,7 +61,8 @@ export default function Home() {
               <Calendar className="w-6 h-6 text-green-700 mr-2" />
               <h2 className="text-3xl font-bold">Programación del Evento</h2>
             </div>
-            <EventSchedule />
+            Pendiente...
+            {/*<EventSchedule />*/}
           </div>
         </section>
       </main>
@@ -70,8 +71,8 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-xl font-bold mb-4">III Encuentro Departamental de Caminantes Villamaría Caldas</h3>
-              <p>Camina, ven y descubre los encantos de Villamaría.</p>
+              <h3 className="text-xl font-bold mb-4">II Toma Caminera en Carolina del Príncipe</h3>
+              <p>Carolina Mágica Senderos y Cascadas.</p>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-4">Enlaces</h3>
@@ -100,8 +101,8 @@ export default function Home() {
             </div>
             <div>
               <h3 className="text-xl font-bold mb-4">Contacto</h3>
-              <p>Email: polocheguzmanmariairene@gmail.com</p>
-              <p>Teléfono: 3147015887</p>
+              <p>Email: caroltur.com@gmail.com</p>
+              <p>Teléfono: 3216215749</p>
             </div>
           </div>
           <div className="border-t border-green-700 mt-8 pt-4 text-center">
