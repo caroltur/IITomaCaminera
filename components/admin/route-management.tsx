@@ -20,34 +20,33 @@ import {
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Pencil, Trash2, Plus, MapPin, X, Upload, ImageIcon } from "lucide-react"
+import { Pencil, Trash2, Plus, MapPin, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { firebaseClient } from "@/lib/firebase/client"
 
 type DaySpots = {
   day: number
   spots: number
+  enabled: boolean
 }
 
 interface Route {
-  id: string; // Asumiendo que el ID de Firebase es string
+  id: string;
   name: string;
   elevation: string;
   description: string;
-  available_spots_by_day: { day: number; spots: number; }[];
+  available_spots_by_day: DaySpots[];
   duration: string;
-  difficulty: "Fácil" | "Moderada" | "Difícil"; // Correcto aquí
+  difficulty: "Fácil" | "Moderada" | "Difícil";
   image_url: string;
   distance: string;
   meeting_point: string;
-  // ... otras propiedades que tu ruta pueda tener (ej. created_at, updated_at, gallery)
 }
-
 
 const routeFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
-  difficulty: z.enum(["Fácil", "Moderada", "Difícil"], { // Cambiado de z.string()
+  difficulty: z.enum(["Fácil", "Moderada", "Difícil"], {
     errorMap: (issue, ctx) => {
       if (issue.code === z.ZodIssueCode.invalid_enum_value) {
         return { message: "La dificultad debe ser 'Fácil', 'Moderada' o 'Difícil'" };
@@ -61,9 +60,14 @@ const routeFormSchema = z.object({
       z.object({
         day: z.number().min(1, "El día debe ser mayor a 0"),
         spots: z.number().min(0, "Los cupos no pueden ser negativos"),
+        enabled: z.boolean().default(true),
       }),
     )
-    .min(1, "Debe haber al menos un día configurado"),
+    .max(3, "Máximo 3 días permitidos")
+    .refine(
+      (days) => days.some(day => day.enabled),
+      "Debe haber al menos un día habilitado"
+    ),
   duration: z.string().min(1, "Ingresa la duración"),
   distance: z.string().min(1, "Ingresa la distancia"),
   elevation: z.string().min(1, "Ingresa la elevación"),
@@ -78,8 +82,6 @@ export default function RouteManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [currentRoute, setCurrentRoute] = useState<Route | null>(null)
 
-  
-
   const form = useForm<z.infer<typeof routeFormSchema>>({
     resolver: zodResolver(routeFormSchema),
     defaultValues: {
@@ -88,8 +90,9 @@ export default function RouteManagement() {
       difficulty: "Fácil",
       image_url: "",
       available_spots_by_day: [
-        { day: 1, spots: 0 },
-        { day: 2, spots: 0 },
+        { day: 1, spots: 0, enabled: true },
+        { day: 2, spots: 0, enabled: true },
+        { day: 3, spots: 0, enabled: false },
       ],
       duration: "",
       distance: "",
@@ -98,7 +101,7 @@ export default function RouteManagement() {
     },
   })
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "available_spots_by_day",
   })
@@ -109,15 +112,32 @@ export default function RouteManagement() {
 
   useEffect(() => {
     if (currentRoute && isEditDialogOpen) {
+      const daysData = currentRoute.available_spots_by_day || [];
+      
+      // Asegurarnos de que siempre tengamos exactamente 3 días en el formulario
+      const defaultDays = [
+        { day: 1, spots: 0, enabled: false },
+        { day: 2, spots: 0, enabled: false },
+        { day: 3, spots: 0, enabled: false }
+      ];
+      
+      // Actualizar los días con los datos existentes
+      daysData.forEach(day => {
+        if (day.day >= 1 && day.day <= 3) {
+          defaultDays[day.day - 1] = {
+            day: day.day,
+            spots: day.spots,
+            enabled: day.enabled !== false
+          };
+        }
+      });
+
       form.reset({
         name: currentRoute.name,
         description: currentRoute.description,
         difficulty: currentRoute.difficulty,
         image_url: currentRoute.image_url,
-        available_spots_by_day: currentRoute.available_spots_by_day || [
-          { day: 1, spots: 0 },
-          { day: 2, spots: 0 },
-        ],
+        available_spots_by_day: defaultDays,
         duration: currentRoute.duration,
         distance: currentRoute.distance,
         elevation: currentRoute.elevation,
@@ -133,8 +153,6 @@ export default function RouteManagement() {
       setRoutes(data)
     } catch (error) {
       console.error("Error fetching routes:", error)
-      // Fallback data for preview
-      
     } finally {
       setLoading(false)
     }
@@ -142,15 +160,21 @@ export default function RouteManagement() {
 
   const onSubmit = async (data: z.infer<typeof routeFormSchema>) => {
     try {
+      // Filtrar solo los días habilitados para guardar
+      const dataToSave = {
+        ...data,
+        available_spots_by_day: data.available_spots_by_day.filter(day => day.enabled)
+      };
+
       if (isEditDialogOpen && currentRoute) {
-        await firebaseClient.updateRoute(currentRoute.id, data)
-        setRoutes(routes.map((route) => (route.id === currentRoute.id ? { ...route, ...data } : route)))
+        await firebaseClient.updateRoute(currentRoute.id, dataToSave)
+        setRoutes(routes.map((route) => (route.id === currentRoute.id ? { ...route, ...dataToSave } : route)))
 
         toast.success("Ruta actualizada", {
           description: "La ruta ha sido actualizada exitosamente.",
         })
       } else {
-        const newRoute = await firebaseClient.createRoute(data)
+        const newRoute = await firebaseClient.createRoute(dataToSave)
         setRoutes([...routes, newRoute])
 
         toast.success("Ruta agregada", {
@@ -164,8 +188,9 @@ export default function RouteManagement() {
         difficulty: "Fácil",
         image_url: "",
         available_spots_by_day: [
-          { day: 1, spots: 0 },
-          { day: 2, spots: 0 },
+          { day: 1, spots: 0, enabled: true },
+          { day: 2, spots: 0, enabled: true },
+          { day: 3, spots: 0, enabled: false },
         ],
         duration: "",
         distance: "",
@@ -202,7 +227,6 @@ export default function RouteManagement() {
     }
   }
 
-  
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "Fácil":
@@ -216,24 +240,42 @@ export default function RouteManagement() {
     }
   }
 
-  const addNewDay = () => {
-    const nextDay = fields.length > 0 ? Math.max(...fields.map((f) => f.day)) + 1 : 1
-    append({ day: nextDay, spots: 0 })
+  const toggleDayEnabled = (index: number) => {
+    const currentValue = fields[index]?.enabled || false;
+    update(index, {
+      ...fields[index],
+      enabled: !currentValue,
+      spots: !currentValue ? fields[index]?.spots || 0 : 0 // Reset spots when disabling
+    });
   }
 
-  // Obtener el número máximo de días de todas las rutas para las columnas
-  const getMaxDays = () => {
-    if (routes.length === 0) return 2
-    return Math.max(...routes.map((route) => route.available_spots_by_day?.length || 2))
+  const addNewDay = () => {
+    // Buscar el primer día deshabilitado para habilitarlo
+    const disabledDayIndex = fields.findIndex(day => !day.enabled);
+    if (disabledDayIndex !== -1) {
+      update(disabledDayIndex, {
+        ...fields[disabledDayIndex],
+        enabled: true,
+        spots: 0
+      });
+    } else {
+      toast.info("Límite alcanzado", {
+        description: "Ya has configurado el máximo de 3 días.",
+      });
+    }
   }
 
   const getSpotsByDay = (route: Route, day: number) => {
-    if (!route.available_spots_by_day) return "-"
-    const daySpot = route.available_spots_by_day.find((spot) => spot.day === day)
-    return daySpot ? daySpot.spots.toString() : "-"
+    if (!route.available_spots_by_day) return { spots: "-", enabled: false };
+    const daySpot = route.available_spots_by_day.find((spot) => spot.day === day);
+    return { 
+      spots: daySpot ? daySpot.spots.toString() : "-",
+      enabled: daySpot?.enabled !== false
+    };
   }
 
-  const maxDays = getMaxDays()
+  // Siempre mostrar 3 columnas para los días
+  const maxDays = 3;
 
   return (
     <div className="space-y-6">
@@ -247,8 +289,9 @@ export default function RouteManagement() {
               difficulty: "Fácil",
               image_url: "",
               available_spots_by_day: [
-                { day: 1, spots: 0 },
-                { day: 2, spots: 0 },
+                { day: 1, spots: 0, enabled: true },
+                { day: 2, spots: 0, enabled: true },
+                { day: 3, spots: 0, enabled: false },
               ],
               duration: "",
               distance: "",
@@ -271,7 +314,7 @@ export default function RouteManagement() {
                   <TableHead className="min-w-[200px]">Nombre</TableHead>
                   <TableHead>Dificultad</TableHead>
                   {Array.from({ length: maxDays }, (_, i) => (
-                    <TableHead key={i + 1}>Cupos Día {i + 1}</TableHead>
+                    <TableHead key={i + 1} className="text-center">Día {i + 1}</TableHead>
                   ))}
                   <TableHead className="min-w-[150px]">Punto de encuentro</TableHead>
                   <TableHead className="text-left">Acciones</TableHead>
@@ -299,11 +342,28 @@ export default function RouteManagement() {
                           {route.difficulty}
                         </Badge>
                       </TableCell>
-                      {Array.from({ length: maxDays }, (_, i) => (
-                        <TableCell key={i + 1} className="text-center">
-                          {getSpotsByDay(route, i + 1)}
-                        </TableCell>
-                      ))}
+                      {Array.from({ length: maxDays }, (_, i) => {
+                        const dayInfo = getSpotsByDay(route, i + 1);
+                        return (
+                          <TableCell key={i + 1} className="text-center">
+                            {dayInfo.enabled ? (
+                              <div>
+                                <div className="font-medium">{dayInfo.spots} cupos</div>
+                                <Badge variant="outline" className="text-xs mt-1 border-green-200 bg-green-50 text-green-700">
+                                  Habilitado
+                                </Badge>
+                              </div>
+                            ) : (
+                              <div className="text-gray-400">
+                                <div className="line-through">-</div>
+                                <Badge variant="outline" className="text-xs mt-1 bg-gray-50 text-gray-500">
+                                  No disponible
+                                </Badge>
+                              </div>
+                            )}
+                          </TableCell>
+                        );
+                      })}
                       <TableCell className="flex items-center">
                         <MapPin className="h-4 w-4 mr-1 text-gray-500 flex-shrink-0" />
                         <span className="truncate">{route.meeting_point}</span>
@@ -352,7 +412,7 @@ export default function RouteManagement() {
           }
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-8xl min-w-[60vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditDialogOpen ? "Editar Ruta" : "Agregar Nueva Ruta"}</DialogTitle>
             <DialogDescription>
@@ -439,45 +499,64 @@ export default function RouteManagement() {
               {/* Cupos por día */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <FormLabel className="text-base font-medium">Cupos disponibles por día</FormLabel>
+                  <div>
+                    <FormLabel className="text-base font-medium">Configuración de días</FormLabel>
+                    <FormDescription className="mt-0">
+                      Máximo 3 días. Puedes habilitar/deshabilitar días según sea necesario.
+                    </FormDescription>
+                  </div>
                   <Button type="button" variant="outline" size="sm" onClick={addNewDay}>
                     <Plus className="h-4 w-4 mr-1" />
-                    Agregar día
+                    Habilitar día
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-2">
-                      <FormField
-                        control={form.control}
-                        name={`available_spots_by_day.${index}.spots`}
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Día {fields[index].day}</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {fields.length > 1 && (
+                    <div key={field.id} className="space-y-2 border p-4 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-base font-medium">
+                          Día {field.day}
+                        </span>
                         <Button
                           type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => remove(index)}
-                          className="mb-0"
+                          variant={field.enabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleDayEnabled(index)}
+                          className={field.enabled ? "bg-green-600 hover:bg-green-700" : ""}
                         >
-                          <X className="h-4 w-4" />
+                          {field.enabled ? (
+                            <>
+                              <Eye className="h-3 w-3 mr-1" /> Habilitado
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="h-3 w-3 mr-1" /> Deshabilitado
+                            </>
+                          )}
                         </Button>
+                      </div>
+                      
+                      {field.enabled && (
+                        <FormField
+                          control={form.control}
+                          name={`available_spots_by_day.${index}.spots`}
+                          render={({ field: spotsField }) => (
+                            <FormItem>
+                              <FormLabel>Cupos disponibles</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  {...spotsField}
+                                  onChange={(e) => spotsField.onChange(Number.parseInt(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       )}
                     </div>
                   ))}
@@ -569,8 +648,6 @@ export default function RouteManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      
     </div>
   )
 }
