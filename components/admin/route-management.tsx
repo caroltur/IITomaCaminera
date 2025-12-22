@@ -74,6 +74,8 @@ const routeFormSchema = z.object({
   meeting_point: z.string().min(1, "Ingresa el punto de encuentro"),
 })
 
+type RouteFormData = z.infer<typeof routeFormSchema>
+
 export default function RouteManagement() {
   const [routes, setRoutes] = useState<Route[]>([])
   const [loading, setLoading] = useState(true)
@@ -82,8 +84,8 @@ export default function RouteManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [currentRoute, setCurrentRoute] = useState<Route | null>(null)
 
-  const form = useForm<z.infer<typeof routeFormSchema>>({
-    resolver: zodResolver(routeFormSchema),
+  const form = useForm<RouteFormData>({
+    resolver: zodResolver(routeFormSchema) as any,
     defaultValues: {
       name: "",
       description: "",
@@ -99,9 +101,10 @@ export default function RouteManagement() {
       elevation: "",
       meeting_point: "",
     },
+    mode: "onChange",
   })
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, update } = useFieldArray({
     control: form.control,
     name: "available_spots_by_day",
   })
@@ -114,14 +117,12 @@ export default function RouteManagement() {
     if (currentRoute && isEditDialogOpen) {
       const daysData = currentRoute.available_spots_by_day || [];
       
-      // Asegurarnos de que siempre tengamos exactamente 3 días en el formulario
       const defaultDays = [
         { day: 1, spots: 0, enabled: false },
         { day: 2, spots: 0, enabled: false },
         { day: 3, spots: 0, enabled: false }
       ];
       
-      // Actualizar los días con los datos existentes
       daysData.forEach(day => {
         if (day.day >= 1 && day.day <= 3) {
           defaultDays[day.day - 1] = {
@@ -150,7 +151,41 @@ export default function RouteManagement() {
     setLoading(true)
     try {
       const data = await firebaseClient.getRoutes()
-      setRoutes(data)
+      // SOLUCIÓN: Verificar y transformar los datos si es necesario
+      if (Array.isArray(data)) {
+        // Si data es un array, usarlo directamente
+        const transformedData = data.map((item: any) => ({
+          id: item.id || "",
+          name: item.name || "",
+          elevation: item.elevation || "",
+          description: item.description || "",
+          available_spots_by_day: item.available_spots_by_day || [],
+          duration: item.duration || "",
+          difficulty: item.difficulty || "Fácil",
+          image_url: item.image_url || "",
+          distance: item.distance || "",
+          meeting_point: item.meeting_point || "",
+        }))
+        setRoutes(transformedData)
+      } else if (data && typeof data === 'object') {
+        // Si data es un objeto (como un snapshot de Firebase), convertirlo a array
+        const routesArray = Object.entries(data).map(([id, routeData]: [string, any]) => ({
+          id,
+          name: routeData.name || "",
+          elevation: routeData.elevation || "",
+          description: routeData.description || "",
+          available_spots_by_day: routeData.available_spots_by_day || [],
+          duration: routeData.duration || "",
+          difficulty: routeData.difficulty || "Fácil",
+          image_url: routeData.image_url || "",
+          distance: routeData.distance || "",
+          meeting_point: routeData.meeting_point || "",
+        }))
+        setRoutes(routesArray)
+      } else {
+        // Si no hay datos o es null/undefined, establecer array vacío
+        setRoutes([])
+      }
     } catch (error) {
       console.error("Error fetching routes:", error)
     } finally {
@@ -158,9 +193,8 @@ export default function RouteManagement() {
     }
   }
 
-  const onSubmit = async (data: z.infer<typeof routeFormSchema>) => {
+  const onSubmit = async (data: RouteFormData) => {
     try {
-      // Filtrar solo los días habilitados para guardar
       const dataToSave = {
         ...data,
         available_spots_by_day: data.available_spots_by_day.filter(day => day.enabled)
@@ -175,7 +209,20 @@ export default function RouteManagement() {
         })
       } else {
         const newRoute = await firebaseClient.createRoute(dataToSave)
-        setRoutes([...routes, newRoute])
+        // SOLUCIÓN: Verificar la estructura del nuevo objeto
+        const newRouteData = {
+          id: newRoute.id || newRoute._id || "",
+          name: dataToSave.name,
+          elevation: dataToSave.elevation,
+          description: dataToSave.description,
+          available_spots_by_day: dataToSave.available_spots_by_day,
+          duration: dataToSave.duration,
+          difficulty: dataToSave.difficulty,
+          image_url: dataToSave.image_url,
+          distance: dataToSave.distance,
+          meeting_point: dataToSave.meeting_point,
+        }
+        setRoutes([...routes, newRouteData])
 
         toast.success("Ruta agregada", {
           description: "La nueva ruta ha sido agregada exitosamente.",
@@ -245,12 +292,11 @@ export default function RouteManagement() {
     update(index, {
       ...fields[index],
       enabled: !currentValue,
-      spots: !currentValue ? fields[index]?.spots || 0 : 0 // Reset spots when disabling
+      spots: !currentValue ? fields[index]?.spots || 0 : 0
     });
   }
 
   const addNewDay = () => {
-    // Buscar el primer día deshabilitado para habilitarlo
     const disabledDayIndex = fields.findIndex(day => !day.enabled);
     if (disabledDayIndex !== -1) {
       update(disabledDayIndex, {
@@ -274,7 +320,6 @@ export default function RouteManagement() {
     };
   }
 
-  // Siempre mostrar 3 columnas para los días
   const maxDays = 3;
 
   return (
@@ -412,7 +457,7 @@ export default function RouteManagement() {
           }
         }}
       >
-        <DialogContent className="max-w-8xl min-w-[60vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl min-w-[60vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditDialogOpen ? "Editar Ruta" : "Agregar Nueva Ruta"}</DialogTitle>
             <DialogDescription>
@@ -424,7 +469,7 @@ export default function RouteManagement() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="name"
@@ -432,7 +477,7 @@ export default function RouteManagement() {
                     <FormItem>
                       <FormLabel>Nombre de la ruta</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej. Sendero del Bosque" {...field} />
+                        <Input placeholder="Ej. Sendero del Bosque" {...field} className="text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -447,14 +492,14 @@ export default function RouteManagement() {
                       <FormLabel>Dificultad</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="text-base h-12">
                             <SelectValue placeholder="Selecciona una dificultad" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Fácil">Fácil</SelectItem>
-                          <SelectItem value="Moderada">Moderada</SelectItem>
-                          <SelectItem value="Difícil">Difícil</SelectItem>
+                          <SelectItem value="Fácil" className="text-base">Fácil</SelectItem>
+                          <SelectItem value="Moderada" className="text-base">Moderada</SelectItem>
+                          <SelectItem value="Difícil" className="text-base">Difícil</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -472,7 +517,7 @@ export default function RouteManagement() {
                     <FormControl>
                       <Textarea
                         placeholder="Describe la ruta, sus características y atractivos..."
-                        className="min-h-[100px]"
+                        className="min-h-[120px] text-base"
                         {...field}
                       />
                     </FormControl>
@@ -488,7 +533,7 @@ export default function RouteManagement() {
                   <FormItem>
                     <FormLabel>URL de la imagen</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} />
+                      <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} className="text-base" />
                     </FormControl>
                     <FormDescription>URL de la imagen principal de la ruta</FormDescription>
                     <FormMessage />
@@ -500,38 +545,38 @@ export default function RouteManagement() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <FormLabel className="text-base font-medium">Configuración de días</FormLabel>
-                    <FormDescription className="mt-0">
+                    <FormLabel className="text-lg font-semibold">Configuración de días</FormLabel>
+                    <FormDescription className="mt-1 text-base">
                       Máximo 3 días. Puedes habilitar/deshabilitar días según sea necesario.
                     </FormDescription>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addNewDay}>
-                    <Plus className="h-4 w-4 mr-1" />
+                  <Button type="button" variant="outline" size="lg" onClick={addNewDay} className="text-base">
+                    <Plus className="h-5 w-5 mr-2" />
                     Habilitar día
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="space-y-2 border p-4 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-base font-medium">
+                    <div key={field.id} className="space-y-3 border-2 p-5 rounded-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-lg font-semibold">
                           Día {field.day}
                         </span>
                         <Button
                           type="button"
                           variant={field.enabled ? "default" : "outline"}
-                          size="sm"
+                          size="lg"
                           onClick={() => toggleDayEnabled(index)}
-                          className={field.enabled ? "bg-green-600 hover:bg-green-700" : ""}
+                          className={`text-base ${field.enabled ? "bg-green-600 hover:bg-green-700 px-6" : "px-6"}`}
                         >
                           {field.enabled ? (
                             <>
-                              <Eye className="h-3 w-3 mr-1" /> Habilitado
+                              <Eye className="h-4 w-4 mr-2" /> Habilitado
                             </>
                           ) : (
                             <>
-                              <EyeOff className="h-3 w-3 mr-1" /> Deshabilitado
+                              <EyeOff className="h-4 w-4 mr-2" /> Deshabilitado
                             </>
                           )}
                         </Button>
@@ -543,7 +588,7 @@ export default function RouteManagement() {
                           name={`available_spots_by_day.${index}.spots`}
                           render={({ field: spotsField }) => (
                             <FormItem>
-                              <FormLabel>Cupos disponibles</FormLabel>
+                              <FormLabel className="text-base">Cupos disponibles</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -551,6 +596,7 @@ export default function RouteManagement() {
                                   placeholder="0"
                                   {...spotsField}
                                   onChange={(e) => spotsField.onChange(Number.parseInt(e.target.value) || 0)}
+                                  className="text-base h-12"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -563,7 +609,7 @@ export default function RouteManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <FormField
                   control={form.control}
                   name="duration"
@@ -571,7 +617,7 @@ export default function RouteManagement() {
                     <FormItem>
                       <FormLabel>Duración</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej. 3 horas" {...field} />
+                        <Input placeholder="Ej. 3 horas" {...field} className="text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -585,7 +631,7 @@ export default function RouteManagement() {
                     <FormItem>
                       <FormLabel>Distancia</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej. 5 km" {...field} />
+                        <Input placeholder="Ej. 5 km" {...field} className="text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -599,7 +645,7 @@ export default function RouteManagement() {
                     <FormItem>
                       <FormLabel>Elevación</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej. 150 m" {...field} />
+                        <Input placeholder="Ej. 150 m" {...field} className="text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -614,7 +660,7 @@ export default function RouteManagement() {
                   <FormItem>
                     <FormLabel>Punto de encuentro</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej. Parque Central, entrada principal" {...field} />
+                      <Input placeholder="Ej. Parque Central, entrada principal" {...field} className="text-base" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -622,7 +668,9 @@ export default function RouteManagement() {
               />
 
               <DialogFooter>
-                <Button type="submit">{isEditDialogOpen ? "Guardar cambios" : "Agregar ruta"}</Button>
+                <Button type="submit" size="lg" className="text-base px-8">
+                  {isEditDialogOpen ? "Guardar cambios" : "Agregar ruta"}
+                </Button>
               </DialogFooter>
             </form>
           </Form>
