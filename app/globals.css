@@ -142,7 +142,7 @@
   @media (max-width: 768px) {
     .LogoResponsib {
       /* Nueva imagen solo para pantallas de 768px o menos */
-      background-image: url(/bannerMovil.jpeg); 
+      background-image: url(/bannerMovil.png); 
       /* Ajusta el tamaño si el bannerMovil es más alto */
       background-size: 100% 80%;
     }
