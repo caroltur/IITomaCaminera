@@ -30,6 +30,7 @@ type DaySpots = {
   enabled: boolean
 }
 
+// 1. MODIFICACIÓN: Añadir 'gallery' a la interfaz
 interface Route {
   id: string;
   name: string;
@@ -39,6 +40,7 @@ interface Route {
   duration: string;
   difficulty: "Fácil" | "Moderada" | "Difícil";
   image_url: string;
+  gallery: string; // <-- Nuevo campo
   distance: string;
   meeting_point: string;
 }
@@ -55,6 +57,8 @@ const routeFormSchema = z.object({
     },
   }),
   image_url: z.string().url("Debe ser una URL válida").or(z.string().length(0)),
+  // 2. MODIFICACIÓN: Añadir validación para 'gallery' (opcional, debe ser URL)
+  gallery: z.string().url("Debe ser una URL válida").or(z.string().length(0)).optional(),
   available_spots_by_day: z
     .array(
       z.object({
@@ -91,6 +95,7 @@ export default function RouteManagement() {
       description: "",
       difficulty: "Fácil",
       image_url: "",
+      gallery: "", // 3. MODIFICACIÓN: Valor por defecto para el nuevo campo
       available_spots_by_day: [
         { day: 1, spots: 0, enabled: true },
         { day: 2, spots: 0, enabled: true },
@@ -133,11 +138,13 @@ export default function RouteManagement() {
         }
       });
 
+      // 4. MODIFICACIÓN: Incluir 'gallery' al resetear el formulario en modo edición
       form.reset({
         name: currentRoute.name,
         description: currentRoute.description,
         difficulty: currentRoute.difficulty,
         image_url: currentRoute.image_url,
+        gallery: currentRoute.gallery || "", // <-- Se incluye aquí
         available_spots_by_day: defaultDays,
         duration: currentRoute.duration,
         distance: currentRoute.distance,
@@ -151,9 +158,7 @@ export default function RouteManagement() {
     setLoading(true)
     try {
       const data = await firebaseClient.getRoutes()
-      // SOLUCIÓN: Verificar y transformar los datos si es necesario
       if (Array.isArray(data)) {
-        // Si data es un array, usarlo directamente
         const transformedData = data.map((item: any) => ({
           id: item.id || "",
           name: item.name || "",
@@ -163,12 +168,12 @@ export default function RouteManagement() {
           duration: item.duration || "",
           difficulty: item.difficulty || "Fácil",
           image_url: item.image_url || "",
+          gallery: item.gallery || "", // 5. MODIFICACIÓN: Incluir 'gallery' al transformar datos
           distance: item.distance || "",
           meeting_point: item.meeting_point || "",
         }))
         setRoutes(transformedData)
       } else if (data && typeof data === 'object') {
-        // Si data es un objeto (como un snapshot de Firebase), convertirlo a array
         const routesArray = Object.entries(data).map(([id, routeData]: [string, any]) => ({
           id,
           name: routeData.name || "",
@@ -178,12 +183,12 @@ export default function RouteManagement() {
           duration: routeData.duration || "",
           difficulty: routeData.difficulty || "Fácil",
           image_url: routeData.image_url || "",
+          gallery: routeData.gallery || "", // 5. MODIFICACIÓN: Incluir 'gallery' al transformar datos
           distance: routeData.distance || "",
           meeting_point: routeData.meeting_point || "",
         }))
         setRoutes(routesArray)
       } else {
-        // Si no hay datos o es null/undefined, establecer array vacío
         setRoutes([])
       }
     } catch (error) {
@@ -209,7 +214,6 @@ export default function RouteManagement() {
         })
       } else {
         const newRoute = await firebaseClient.createRoute(dataToSave)
-        // SOLUCIÓN: Verificar la estructura del nuevo objeto
         const newRouteData = {
           id: newRoute.id || newRoute._id || "",
           name: dataToSave.name,
@@ -219,6 +223,7 @@ export default function RouteManagement() {
           duration: dataToSave.duration,
           difficulty: dataToSave.difficulty,
           image_url: dataToSave.image_url,
+          gallery: dataToSave.gallery || "", // 5. MODIFICACIÓN: Incluir 'gallery' al crear nuevo objeto
           distance: dataToSave.distance,
           meeting_point: dataToSave.meeting_point,
         }
@@ -234,6 +239,7 @@ export default function RouteManagement() {
         description: "",
         difficulty: "Fácil",
         image_url: "",
+        gallery: "", // 3. MODIFICACIÓN: Resetear también 'gallery'
         available_spots_by_day: [
           { day: 1, spots: 0, enabled: true },
           { day: 2, spots: 0, enabled: true },
@@ -333,6 +339,7 @@ export default function RouteManagement() {
               description: "",
               difficulty: "Fácil",
               image_url: "",
+              gallery: "", // 3. MODIFICACIÓN: Resetear también 'gallery'
               available_spots_by_day: [
                 { day: 1, spots: 0, enabled: true },
                 { day: 2, spots: 0, enabled: true },
@@ -536,6 +543,27 @@ export default function RouteManagement() {
                       <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} className="text-base" />
                     </FormControl>
                     <FormDescription>URL de la imagen principal de la ruta</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 6. MODIFICACIÓN: Nuevo campo para la galería */}
+              <FormField
+                control={form.control}
+                name="gallery"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Galería</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Pon la URL del álbum" 
+                        {...field} 
+                        className="text-base" 
+                        value={field.value || ''} // Manejo seguro del valor opcional
+                      />
+                    </FormControl>
+                    <FormDescription>URL del álbum de fotos de la ruta</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

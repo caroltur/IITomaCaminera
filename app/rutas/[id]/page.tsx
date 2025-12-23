@@ -153,7 +153,7 @@ export default function RouteDetailPage() {
                 {route.distance} km
               </span>
               <span className="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-purple-500 text-white">
-                {route.duration}
+                {route.duration} Horas
               </span>
             </div>
           </div>
