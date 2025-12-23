@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Home, Route, Users, CreditCard, Settings } from "lucide-react"
+import { Home, Route, Users, CreditCard, Package, Settings, } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from "@/components/ui/table"
 import { toast } from "sonner"
@@ -14,7 +14,7 @@ import { firebaseClient } from "@/lib/firebase/client"
 import RouteManagement from "@/components/admin/route-management"
 import PersonManagement from "@/components/admin/person-management"
 import PaymentControl from "@/components/admin/payment-control"
-//import SouvenirControl from "@/components/admin/souvenir-control"
+import SouvenirControl from "@/components/admin/souvenir-control"
 import PriceSettings from "@/components/admin/price-settings"
 
 interface SpotByDay {
@@ -164,7 +164,7 @@ export default function AdminPage() {
                 </Button>
               </li>
               
-              {/*<li>
+              <li>
                 <Button
                   variant={activeTab === "souvenirs" ? "secondary" : "ghost"}
                   className="w-full justify-start"
@@ -174,16 +174,7 @@ export default function AdminPage() {
                   Control de Souvenirs
                 </Button>
               </li>
-              <li>
-                <Button
-                  variant={activeTab === "export" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab("export")}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportación de Datos
-                </Button>
-              </li>*/}
+              
               <li>
                 <Button
                   variant={activeTab === "prices" ? "secondary" : "ghost"}
@@ -231,15 +222,16 @@ export default function AdminPage() {
                   <CreditCard className="h-4 w-4 md:mr-2" />
                   <span className="hidden md:inline">Pagos</span>
                 </TabsTrigger>
+                 <TabsTrigger value="souvenirs">
+                  <Package className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Souvenirs</span>
+                </TabsTrigger>
                 {/*}
                 <TabsTrigger value="manual">
                   <Users className="h-4 w-4 md:mr-2" />
                   <span className="hidden md:inline">Inscripción</span>
                 </TabsTrigger>
-                <TabsTrigger value="souvenirs">
-                  <Package className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Souvenirs</span>
-                </TabsTrigger>
+               
                 <TabsTrigger value="export">
                   <Download className="h-4 w-4 md:mr-2" />
                   <span className="hidden md:inline">Exportar</span>
@@ -349,6 +341,10 @@ export default function AdminPage() {
                       <Users className="mr-2 h-4 w-4" />
                       Gestión de Personas
                     </Button>
+                    <Button className="w-full justify-start" onClick={() => setActiveTab("souvenirs")}>
+                      <Package className="mr-2 h-4 w-4" />
+                      Entrega de Souvenirs
+                    </Button>
                     <Button className="w-full justify-start" onClick={() => setActiveTab("prices")}>
                       <Settings className="mr-2 h-4 w-4" />
                       Configuración de precios
@@ -363,7 +359,7 @@ export default function AdminPage() {
           {activeTab === "routes" && <RouteManagement />}
           {activeTab === "people" && <PersonManagement />}
           {activeTab === "payments" && <PaymentControl />}
-          {/*activeTab === "souvenirs" && <SouvenirControl />*/}
+          {activeTab === "souvenirs" && <SouvenirControl />}
           {/*activeTab === "export" && <DataExport />*/}
           {activeTab === "prices" && <PriceSettings />}
         </div>
