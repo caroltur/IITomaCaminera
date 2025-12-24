@@ -165,7 +165,7 @@ export default function SouvenirControl() {
       }
 
       // Actualizar en Firebase
-      await firebaseClient.updateRegistration(foundRegistration.id, {
+      await firebaseClient.updateRegistration(foundRegistration.document_id, { 
         souvenir_status: "delivered",
         updated_at: new Date().toISOString()
       })
@@ -211,7 +211,7 @@ export default function SouvenirControl() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Control de Souvenirs</h1>
+        <h1 className="text-2xl font-bold ml-8">Control de Souvenirs</h1>
         <Button onClick={handleRefresh} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
           Refrescar datos

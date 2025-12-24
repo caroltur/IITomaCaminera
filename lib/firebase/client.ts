@@ -358,6 +358,8 @@ class FirebaseClient {
       const formattedData = {
         document_id: accessCodeData.document_id,
         people_count: accessCodeData.people_count,
+        payment_number: accessCodeData.payment_number,
+        account_holder: accessCodeData.account_holder,
         access_code: accessCode,
         is_group: accessCodeData.people_count > 1,
         payment_images: accessCodeData.payment_images || [],

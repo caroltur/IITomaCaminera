@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Tabs,
   TabsContent,
@@ -34,21 +35,19 @@ import { Badge } from "@/components/ui/badge"
 import { ImageIcon, Eye, Trash2, Plus, Upload, Edit, Copy, CheckCircle, Users, User } from "lucide-react"
 import { toast } from "sonner"
 import { firebaseClient } from "@/lib/firebase/client"
-// ✅ ELIMINAR estas importaciones de firebase/storage, ya que la lógica de subida se maneja en firebaseClient
-// import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage"
-// import { storage } from "@/lib/firebase/config"
 
 // Esquemas de validación
 const generateCodeSchema = z.object({
   document_id: z.string().min(5, "El número de documento debe tener al menos 5 caracteres"),
   people_count: z.coerce.number().min(1, "Debe haber al menos 1 persona").max(20, "Máximo 20 personas por grupo"),
+  // ✅ NUEVO: Campos adicionales obligatorios
+  payment_number: z.string().min(1, "El número del comprobante es requerido"),
+  account_holder: z.enum(["Freiman Stiven Martinez Quintana", "Juan Manuel Arango Arango"], {
+    errorMap: () => ({ message: "Debes seleccionar un titular de la cuenta" })
+  }),
 })
 
 const addImageSchema = z.object({
-  // ✅ CORRECCIÓN para FileList is not defined:
-  // Se hace la validación de instanceof File, pero el renderizado condicional en el input
-  // asegura que el input de tipo 'file' solo se renderice en el cliente,
-  // evitando que Zod intente validar 'File' en el lado del servidor durante el SSR.
   image_file: typeof window !== 'undefined' ? z.instanceof(File, { message: "Selecciona una imagen válida" }) : z.any(),
 })
 
@@ -63,8 +62,10 @@ type AccessCode = {
   people_count: number
   access_code: string
   is_group: boolean
-  
-  status:  "paid" | "used"
+  // ✅ NUEVO: Campos adicionales en el tipo
+  payment_number: string
+  account_holder: "Freiman Stiven Martinez Quintana" | "Juan Manuel Arango Arango"
+  status: "pending" | "paid"
   created_at: string
   updated_at: string
 }
@@ -89,22 +90,15 @@ export default function PaymentControl() {
     defaultValues: {
       document_id: "",
       people_count: 1,
+      // ✅ NUEVO: Valores por defecto para los nuevos campos
+      payment_number: "",
+      account_holder: undefined, // No hay opción pre-seleccionada
     },
   })
 
   const imageForm = useForm<z.infer<typeof addImageSchema>>({
     resolver: zodResolver(addImageSchema),
-    // ✅ CORRECCIÓN: Para evitar el error FileList is not defined,
-    // puedes usar una estrategia para no validar o resetear el campo
-    // en el servidor si la validación es estricta con instanceof File.
-    // Aunque el renderizado condicional del input ya ayuda, esto es una capa extra.
-    // defaultValues: {
-    //   image_file: undefined!, // Asegúrate de que no haya un valor por defecto que cause problemas en SSR
-    // },
-    // ✅ OPCIONAL: Puedes especificar el modo de validación para el formulario de imagen
-    // mode: "onChange", // o "onBlur", "onSubmit"
   })
-
 
   const editForm = useForm<z.infer<typeof editPeopleSchema>>({
     resolver: zodResolver(editPeopleSchema),
@@ -132,7 +126,7 @@ export default function PaymentControl() {
     }
   }
 
-  // Generar nuevo código
+  // ✅ CORREGIDO: Función generateAccessCode con todos los campos
   const generateAccessCode = async (data: z.infer<typeof generateCodeSchema>) => {
     setSubmitting(true);
     try {
@@ -141,29 +135,24 @@ export default function PaymentControl() {
         toast.error("Ya existe un código de acceso para este número de documento");
         return;
       }
-  
-      // Aquí llamamos a tu función firebaseClient.createAccessCode
-      // Asumimos que esta función devuelve un objeto con todas las propiedades de AccessCode
-      // (id, document_id, people_count, access_code, is_group, payment_images, status, created_at, updated_at).
-      // Si no es así, necesitarías modificar firebaseClient.createAccessCode para que las incluya.
+
+      // ✅ AHORA SÍ: Incluir el account_holder en los datos enviados a Firebase
       const createdAccessCodeData = await firebaseClient.createAccessCode({
         document_id: data.document_id,
         people_count: data.people_count,
+        // ✅ CORRECCIÓN: Asegurarse de enviar account_holder
+        payment_number: data.payment_number,
+        account_holder: data.account_holder, // <-- ¡Este estaba faltando!
+        // Campos por defecto
         payment_images: [],
-        // Si status, is_group, created_at, updated_at se deben pasar aquí, añádelos:
-        // status: "pending", // Asegúrate de que sea el literal, no una variable string
-        // is_group: data.people_count > 1, // Ejemplo de cómo determinarlo
-        // created_at: new Date().toISOString(),
-        // updated_at: new Date().toISOString(),
+        is_group: data.people_count > 1,
+        status: "pending" as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
-  
-      // ✅ Usamos una aserción de tipo para decirle a TypeScript que estamos seguros
-      // de que 'createdAccessCodeData' es de tipo 'AccessCode'.
-      // Esto es un "parche" si firebaseClient.createAccessCode no está fuertemente tipado.
-      // La mejor solución es tipar correctamente la función en firebaseClient.ts.
+
       const newAccessCode: AccessCode = createdAccessCodeData as AccessCode;
-  
-      // Asegúrate de usar la forma funcional de setAccessCodes si dependes del estado anterior
+
       setAccessCodes((prevAccessCodes) => [newAccessCode, ...prevAccessCodes]);
       setLastGeneratedCode(newAccessCode.access_code);
       generateForm.reset();
@@ -176,8 +165,6 @@ export default function PaymentControl() {
     }
   };
 
- 
-
   // Actualizar número de personas
   const updatePeopleCount = async (data: z.infer<typeof editPeopleSchema>) => {
     if (!selectedAccessCode) return
@@ -185,6 +172,7 @@ export default function PaymentControl() {
       const updatedData = {
         people_count: data.people_count,
         is_group: data.people_count > 1,
+        updated_at: new Date().toISOString()
       }
 
       await firebaseClient.updateAccessCode(selectedAccessCode.id, updatedData)
@@ -293,11 +281,18 @@ export default function PaymentControl() {
     )
   }
 
+  // ✅ NUEVA FUNCIÓN: Obtener el nombre corto del titular para mostrar en la tabla
+  const getShortAccountHolder = (fullName: string) => {
+    if (fullName === "Freiman Stiven Martinez Quintana") return "Freiman Martinez";
+    if (fullName === "Juan Manuel Arango Arango") return "Juan Arango";
+    return fullName;
+  }
+
   return (
     <div className="space-y-6">
       {/* Título */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Control de Pagos</h1>
+        <h1 className="text-2xl font-bold ml-8">Control de Pagos</h1>
         <div className="text-sm text-gray-500">
           Total de códigos: {(accessCodes || []).length}
         </div>
@@ -315,7 +310,10 @@ export default function PaymentControl() {
           <Card>
             <CardHeader>
               <CardTitle>Generar Nuevo Código de Acceso</CardTitle>
-              <CardDescription>Crea un código único para que las personas puedan completar su inscripción después de realizar el pago.</CardDescription>
+              <CardDescription>
+                Crea un código único para que las personas puedan completar su inscripción después de realizar el pago.
+                <span className="block mt-1 text-red-500 font-medium">* Todos los campos son obligatorios</span>
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...generateForm}>
@@ -326,7 +324,7 @@ export default function PaymentControl() {
                       name="document_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Número de Documento</FormLabel>
+                          <FormLabel>Número de Documento *</FormLabel>
                           <FormControl>
                             <Input placeholder="Ej. 1234567890" {...field} disabled={submitting} />
                           </FormControl>
@@ -340,7 +338,7 @@ export default function PaymentControl() {
                       name="people_count"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Número de Personas</FormLabel>
+                          <FormLabel>Número de Personas *</FormLabel>
                           <FormControl>
                             <Input type="number" min="1" max="20" {...field} disabled={submitting} />
                           </FormControl>
@@ -350,6 +348,59 @@ export default function PaymentControl() {
                       )}
                     />
                   </div>
+
+                  {/* ✅ NUEVO: Campos adicionales obligatorios */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={generateForm.control}
+                      name="payment_number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número del Comprobante *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Ej. 001-1234567" 
+                              {...field} 
+                              disabled={submitting} 
+                            />
+                          </FormControl>
+                          <FormDescription>Número del comprobante de pago bancario</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={generateForm.control}
+                      name="account_holder"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Titular de la Cuenta *</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value}
+                            disabled={submitting}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un titular" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Freiman Stiven Martinez Quintana">
+                                Freiman Stiven Martinez Quintana
+                              </SelectItem>
+                              <SelectItem value="Juan Manuel Arango Arango">
+                                Juan Manuel Arango Arango
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>Cuenta bancaria donde se realizó el pago</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <Button type="submit" disabled={submitting} className="w-full">
                     {submitting ? (
                       <>
@@ -374,7 +425,7 @@ export default function PaymentControl() {
           <Card>
             <CardHeader>
               <CardTitle>Códigos de Acceso Generados</CardTitle>
-              <CardDescription>Gestiona los códigos existentes, agrega comprobantes de pago y actualiza información.</CardDescription>
+              <CardDescription>Gestiona los códigos existentes con toda la información de pago.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
@@ -384,6 +435,8 @@ export default function PaymentControl() {
                       <TableHead>Documento</TableHead>
                       <TableHead>Código</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Comprobante</TableHead>
+                      <TableHead>Titular</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
@@ -392,7 +445,7 @@ export default function PaymentControl() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           <div className="flex items-center justify-center">
                             <Upload className="mr-2 h-4 w-4 animate-spin" />
                             Cargando códigos...
@@ -401,11 +454,11 @@ export default function PaymentControl() {
                       </TableRow>
                     ) : accessCodes && accessCodes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           <div className="text-gray-500">
                             <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                             <p>No hay códigos generados aún</p>
-                            <p className="text-sm">Usa la pestaña &quot;Generar Código&quot; para crear uno</p>
+                            <p className="text-sm">Usa la pestaña "Generar Código" para crear uno</p>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -428,14 +481,19 @@ export default function PaymentControl() {
                             </div>
                           </TableCell>
                           <TableCell>{getTypeBadge(accessCode.is_group, accessCode.people_count)}</TableCell>
+                          {/* ✅ NUEVO: Mostrar datos de pago en la tabla */}
+                          <TableCell className="font-mono text-sm">
+                            {accessCode.payment_number || "Sin número"}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {getShortAccountHolder(accessCode.account_holder)}
+                          </TableCell>
                           <TableCell>{getStatusBadge(accessCode.status)}</TableCell>
-                          
                           <TableCell className="text-sm text-gray-500">
                             {new Date(accessCode.created_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-1 justify-end">
-                              
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -497,7 +555,6 @@ export default function PaymentControl() {
           </div>
         </TabsContent>
       </Tabs>
-
 
       {/* Diálogo: Editar Número de Personas */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

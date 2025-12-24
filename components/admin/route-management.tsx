@@ -331,7 +331,7 @@ export default function RouteManagement() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestión de Rutas</h1>
+        <h1 className="text-2xl font-bold ml-8">Gestión de Rutas</h1>
         <Button
           onClick={() => {
             form.reset({

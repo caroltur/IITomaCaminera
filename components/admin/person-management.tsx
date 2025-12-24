@@ -234,7 +234,7 @@ export default function PersonManagement() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestión de Personas</h1>
+        <h1 className="text-2xl font-bold ml-8">Gestión de Personas</h1>
         <Button onClick={exportToExcel}>
           <Download className="mr-2 h-4 w-4" /> Exportar a Excel
         </Button>
