@@ -546,7 +546,7 @@ export default function PaymentControl() {
               <CardContent className="p-8">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-blue-600">
-                    {(accessCodes?.filter((code) => code.status === "used").length || 0)}
+                    {(accessCodes?.filter((code) => (code.status as string)  === "used").length || 0)}
                   </p>
                   <p className="text-sm text-gray-600">Usados</p>
                 </div>
