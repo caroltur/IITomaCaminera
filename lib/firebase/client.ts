@@ -546,14 +546,20 @@ class FirebaseClient {
   }
   
   async createPreinscripcion(data: any) {
-  const ref = dbRef(database, "preinscritos")
-  const formattedData = {
-        ...data,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-  await set(ref, formattedData)
-  return { id: data.document_id, ...data }
+    try{
+      const ref = dbRef(database, "preinscritos")
+      const newRouteRef = push(ref)
+      const formattedData = {
+            ...data,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+      await set(newRouteRef, formattedData)
+      return { id: newRouteRef.key, ...data }
+        }  catch (error) {
+      console.error("Error al crear preinscripción:", error)
+      throw error
+    }
 }
 
 
