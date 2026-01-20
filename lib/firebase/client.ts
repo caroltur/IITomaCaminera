@@ -544,6 +544,18 @@ class FirebaseClient {
       throw error
     }
   }
+  
+  async createPreinscripcion(data: any) {
+  const ref = dbRef(database, "preinscritos")
+  const formattedData = {
+        ...data,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+  await set(ref, formattedData)
+  return { id: data.document_id, ...data }
+}
+
 
   async updateSettings(settingsData: any) {
     try {
