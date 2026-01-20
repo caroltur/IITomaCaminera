@@ -110,7 +110,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
                 <h2 className="text-3xl font-bold mb-6">Pre-inscríbete a la II Toma Caminera</h2>
                 <ul className="space-y-4">
                   <li className="flex items-center"><CheckCircle2 className="mr-2 h-5 w-5 text-green-300" /> Prioridad en asignación de cupos</li>
-                  <li className="flex items-center"><CheckCircle2 className="mr-2 h-5 w-5 text-green-300" /> Itinerario detallado en PDF</li>
+                  <li className="flex items-center"><CheckCircle2 className="mr-2 h-5 w-5 text-green-300" /> Itinerario detallado</li>
                   <li className="flex items-center"><CheckCircle2 className="mr-2 h-5 w-5 text-green-300" /> Tarifas especiales para grupos</li>
                 </ul>
                 <p className="mt-8 text-green-100 text-sm italic"> Carolina del Príncipe te espera para vivir el Jardín Colonial de América desde sus montañas. </p>
