@@ -84,7 +84,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
             <Link href="/#programacion" className="text-gray-600 hover:text-green-700">Programación</Link>
           </nav>
           <Button asChild className="bg-green-700 hover:bg-green-800">
-            <Link href="/#inscripcion">Inscríbete</Link>
+            <Link href="/inscripcion">Inscríbete</Link>
           </Button>
         </div>
       </header>
@@ -172,17 +172,111 @@ Quedo atento(a) a la información y el itinerario. 🥾`
           </div>
         </section>
 
-        <section id="programacion" className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center mb-8">
-              <Calendar className="w-6 h-6 text-green-700 mr-2" />
-              <h2 className="text-3xl font-bold">Programación del Evento</h2>
-            </div>
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-              <p className="text-yellow-700 font-medium">Cronograma detallado próximamente. ¡Pre-inscríbete para ser el primero en recibirlo!</p>
-            </div>
-          </div>
-        </section>
+       <section id="programacion" className="py-16 bg-gray-50">
+  <div className="container mx-auto px-4">
+    <div className="flex items-center mb-12">
+      <Calendar className="w-8 h-8 text-green-700 mr-3" />
+      <h2 className="text-3xl font-bold text-gray-800">Programación del Evento</h2>
+    </div>
+
+    <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+      
+      {/* VIERNES */}
+      <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-green-600">
+        <h3 className="text-xl font-bold mb-6 text-green-800 border-b pb-2">Viernes</h3>
+        <ul className="space-y-6">
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold text-base">2:00 PM - 9:00 PM</span>
+            <span className="text-gray-700">Confirmación de inscripciones y entrega de souvenirs.</span>
+            <span className="text-xs font-semibold text-green-600 mt-1 uppercase">📍 Casa de la Cultura</span>
+          </li>
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold text-base">6:00 PM</span>
+            <span className="text-gray-700">Evento de recibimiento y apertura.</span>
+            <span className="text-xs font-semibold text-green-600 mt-1 uppercase">📍 Auditorio Municipal</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* SÁBADO */}
+      <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-600">
+        <h3 className="text-xl font-bold mb-2 text-blue-800">Sábado 21 de Marzo</h3>
+        <p className="text-[10px] font-bold text-blue-600 mb-4 uppercase tracking-wider">📍 Encuentro: Parque Principal</p>
+        <h4><b>Salida de Caminatas</b></h4>
+        <ul className="space-y-4">
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">6:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-red-600">Nivel Alto:</b> La Chorrera, Cascada Escondida y Charco Carraña.</span>
+          </li>
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">7:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-orange-600">Nivel Medio:</b> Piñera de Canasto, Cascada La Holanda y Ruta de la Energía.</span>
+          </li>
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">8:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-green-600">Nivel Bajo:</b> Ruta Patrimonial, Cascadas de la María y Anillo Vial.</span>
+          </li>
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">9:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-orange-600">Nivel Medio:</b> Actividad de las Cavernas.</span>
+          </li>
+          <li className="flex flex-col pt-2 border-t border-gray-100">
+            <span className="text-black font-extrabold">3:00 PM</span>
+            <span className="text-gray-700 text-sm">Inicio del desfile.</span>
+            <span className="text-[10px] font-semibold text-blue-600 mt-1 uppercase">📍 Desde la Virgen de las Misericordias</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* DOMINGO */}
+      <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-orange-600">
+        <h3 className="text-xl font-bold mb-2 text-orange-800">Domingo</h3>
+        <p className="text-[10px] font-bold text-orange-600 mb-4 uppercase tracking-wider">📍 Encuentro: Parque Principal</p>
+        <h4><b>Salida de Caminatas</b></h4>
+        
+        <ul className="space-y-4">
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">6:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-red-600">Nivel Alto:</b> La Chorrera, Cascada Escondida y Charco Carraña.</span>
+          </li>
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">7:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-orange-600">Nivel Medio:</b> Piñera de Canasto, Cascada La Holanda y Ruta de la Energía.</span>
+          </li>
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">8:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-green-600">Nivel Bajo:</b> Ruta Patrimonial, Cascadas de la María y Anillo Vial.</span>
+          </li>
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold">9:00 AM</span>
+            <span className="text-gray-700 text-sm"><b className="text-orange-600">Nivel Medio:</b> Actividad de las Cavernas.</span>
+          </li>
+          <li className="flex flex-col pt-2 border-t border-gray-100">
+            <span className="text-black font-extrabold">7:00 PM</span>
+            <span className="text-gray-700 text-sm font-bold">Evento de Clausura.</span>
+            <span className="text-xs font-semibold text-orange-600 mt-1 uppercase">📍 Parque Principal</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* LUNES */}
+      <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-purple-600">
+        <h3 className="text-xl font-bold mb-6 text-purple-800 border-b pb-2">Lunes</h3>
+        <ul className="space-y-6">
+          <li className="flex flex-col">
+            <span className="text-black font-extrabold text-base">7:00 AM - 12:00 PM</span>
+            <span className="text-gray-700 font-bold italic">Ruta "Las Guacharacas"</span>
+            <span className="text-gray-700 text-sm mt-1">
+                <b className="text-orange-600">Nivel Medio:</b> Diseñada para las personas que se quedan hasta el día lunes.
+            </span>
+            <span className="text-xs font-semibold text-purple-600 mt-2 uppercase">📍 Salida: Parque Principal</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
       </main>
 
       <footer className="bg-green-800 text-white py-12">
@@ -197,7 +291,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
               <ul className="space-y-2">
                 <li><Link href="/#rutas" className="hover:text-green-300">Rutas</Link></li>
                 <li><Link href="/#reservas" className="hover:text-green-300">Reservas</Link></li>
-                <li><Link href="/#inscripcion" className="hover:text-green-300">Inscripción</Link></li>
+                <li><Link href="/inscripcion" className="hover:text-green-300">Inscripción</Link></li>
               </ul>
             </div>
             <div>
