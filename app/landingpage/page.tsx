@@ -127,7 +127,7 @@ const LandingPage = () => {
       <section className="py-24 bg-black text-white text-center relative overflow-hidden">
         <div className="relative z-10 container mx-auto px-4">
           <h2 className="text-4xl md:text-5xl font-black mb-6">¿LISTO PARA ENAMORARTE?</h2>
-          <p className="text-gray-400 mb-10 max-w-lg mx-auto">
+          <p className="text-gray-00 mb-10 max-w-lg mx-auto">
             Carolina del Príncipe te espera con sus fachadas coloniales y sus senderos mágicos. 
             ¡Escríbenos ahora mismo y separa tu cupo!
           </p>
