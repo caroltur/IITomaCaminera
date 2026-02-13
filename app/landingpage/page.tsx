@@ -4,14 +4,32 @@ import React from 'react';
 import { MessageCircle, MapPin, Calendar, ArrowRight, Mountain, ShieldCheck, Ticket, Coffee, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+// Definimos una interfaz para evitar errores de TypeScript con el objeto window
+declare global {
+  interface Window {
+    fbq: any;
+  }
+}
+
 const LandingPage = () => {
   const router = useRouter();
   const whatsappNumber = "573128762526";
   const mensajeDefault = "¡Hola! Quiero inscribirme en la 2da Toma Caminera en Carolina del Príncipe. Me interesa el cupo de $90.000 que incluye el kit y las 2 rutas.";
 
   const handleWhatsAppClick = () => {
+    // --- LÍNEA PARA EL META PIXEL ---
+    if (typeof window !== 'undefined' && window.fbq) {
+      window.fbq('track', 'Contact', {
+        content_name: 'Inscripción Toma Caminera',
+        value: 90000,
+        currency: 'COP'
+      });
+    }
+    // --------------------------------
+
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(mensajeDefault)}`;
     window.open(url, '_blank');
+    
     setTimeout(() => {
       router.push('/');
     }, 2000);
@@ -21,9 +39,8 @@ const LandingPage = () => {
     <div className="min-h-screen bg-white font-sans text-gray-900">
       {/* HERO SECTION: IMPACTO VISUAL */}
       <header className="relative h-[90vh] flex items-center justify-center text-white overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50  via-black/20 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent z-10" />
         
-        {/* Aquí puedes reemplazar la URL por el video que crees más adelante */}
         <div 
           className="absolute inset-0 bg-cover bg-center scale-155 animate-slow-zoom" 
           style={{ backgroundImage: "url('https://firebasestorage.googleapis.com/v0/b/caroltur-2023.appspot.com/o/tomaCaminera%2FIMG-20200224-WA0029.jpg?alt=media&token=7d705428-4083-497f-ad49-4f7b40d5143f')" }}
@@ -110,7 +127,7 @@ const LandingPage = () => {
       <section className="py-24 bg-black text-white text-center relative overflow-hidden">
         <div className="relative z-10 container mx-auto px-4">
           <h2 className="text-4xl md:text-5xl font-black mb-6">¿LISTO PARA ENAMORARTE?</h2>
-          <p className="text-gray-000 mb-10 max-w-lg mx-auto">
+          <p className="text-gray-400 mb-10 max-w-lg mx-auto">
             Carolina del Príncipe te espera con sus fachadas coloniales y sus senderos mágicos. 
             ¡Escríbenos ahora mismo y separa tu cupo!
           </p>
