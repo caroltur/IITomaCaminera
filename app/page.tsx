@@ -183,7 +183,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
       
       {/* VIERNES */}
       <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-green-600">
-        <h3 className="text-xl font-bold mb-6 text-green-800 border-b pb-2">Viernes</h3>
+        <h3 className="text-xl font-bold mb-6 text-green-800 border-b pb-2">Viernes 14 de Agosto</h3>
         <ul className="space-y-6">
           <li className="flex flex-col">
             <span className="text-black font-extrabold text-base">2:00 PM - 9:00 PM</span>
@@ -200,7 +200,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
 
       {/* SÁBADO */}
       <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-600">
-        <h3 className="text-xl font-bold mb-2 text-blue-800">Sábado 21 de Marzo</h3>
+        <h3 className="text-xl font-bold mb-2 text-blue-800">Sábado 15 de Agosto</h3>
         <p className="text-[10px] font-bold text-blue-600 mb-4 uppercase tracking-wider">📍 Encuentro: Parque Principal</p>
         <h4><b>Salida de Caminatas</b></h4>
         <ul className="space-y-4">
@@ -230,7 +230,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
 
       {/* DOMINGO */}
       <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-orange-600">
-        <h3 className="text-xl font-bold mb-2 text-orange-800">Domingo</h3>
+        <h3 className="text-xl font-bold mb-2 text-orange-800">Domingo 16 de Agosto</h3>
         <p className="text-[10px] font-bold text-orange-600 mb-4 uppercase tracking-wider">📍 Encuentro: Parque Principal</p>
         <h4><b>Salida de Caminatas</b></h4>
         
@@ -261,7 +261,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
 
       {/* LUNES */}
       <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-purple-600">
-        <h3 className="text-xl font-bold mb-6 text-purple-800 border-b pb-2">Lunes</h3>
+        <h3 className="text-xl font-bold mb-6 text-purple-800 border-b pb-2">Lunes 17 de Agosto</h3>
         <ul className="space-y-6">
           <li className="flex flex-col">
             <span className="text-black font-extrabold text-base">7:00 AM - 12:00 PM</span>
