@@ -701,6 +701,7 @@ async deleteRegistration(documentId: string) {
 
 async getGroupByLeaderDocument(documentId: string) {
   const snapshot = await get(query(dbRef(database, "groups"), orderByChild("leader_document_id"), equalTo(documentId)))
+  console.log("Grupo encontrado:", snapshot.val())
   const result: any[] = []
   snapshot.forEach(childSnapshot => {
     result.push({ id: childSnapshot.key, ...childSnapshot.val() })

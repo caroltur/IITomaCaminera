@@ -139,6 +139,7 @@ export default function PaymentControl() {
 
   // Función de actualización (Punto 2: Actualiza personas y comprobante)
   const updateAccessCodeData = async (data: z.infer<typeof editPeopleSchema>) => {
+    
     if (!selectedAccessCode) return
     try {
       const updatedValues = {
@@ -148,11 +149,16 @@ export default function PaymentControl() {
         updated_at: new Date().toISOString()
       }
 
+      //console.log("Actualizando grupo asociado:", group.id)
+        console.log("Nuevos datos:", selectedAccessCode.document_id)
+
       await firebaseClient.updateAccessCode(selectedAccessCode.id, updatedValues)
 
       // Sincronizar con el grupo si existe
       const group = await firebaseClient.getGroupByLeaderDocument(selectedAccessCode.document_id)
+      
       if (group) {
+        
         await firebaseClient.updateGroup(group.id, { member_count: data.people_count })
       }
 
