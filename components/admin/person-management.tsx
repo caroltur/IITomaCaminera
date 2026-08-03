@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
-import { Search, Filter, Eye, Download, UserPlus, Loader2 } from "lucide-react"
+import { Search, Filter, Eye, Download, UserPlus, Loader2, Edit } from "lucide-react"
 import { firebaseClient } from "@/lib/firebase/client"
 import * as XLSX from "xlsx"
 import { useForm } from "react-hook-form"
@@ -31,9 +31,10 @@ type Person = {
   id: string
   full_name: string
   document_id: string
+  document_type?: string // ✅ Agregado para consistencia en edición
   phone: string
   rh?: string | null
-  talla_buso?: string | null // ✅ NUEVO: Talla de buso
+  talla_buso?: string | null
   route_id_day1?: string | null
   route_id_day2?: string | null
   group_id?: string | null
@@ -44,14 +45,14 @@ type Person = {
   access_code?: string
 }
 
-// Esquema para el formulario de creación manual
-const createRegistrationSchema = z.object({
+// Esquema para el formulario de creación y edición
+const registrationSchema = z.object({
   document_type: z.string().min(2, "Tipo de documento requerido"),
   document_id: z.string().min(5, "Número de documento requerido"),
   full_name: z.string().min(3, "Nombre completo requerido"),
   phone: z.string().min(7, "Teléfono requerido"),
   rh: z.string().min(1, "RH requerido"),
-  talla_buso: z.string().optional(), // ✅ NUEVO
+  talla_buso: z.string().optional(),
   route_id_day1: z.string().optional(),
   route_id_day2: z.string().optional(),
   access_code: z.string().optional(),
@@ -73,25 +74,32 @@ export default function PersonManagement() {
   // Estados para diálogos
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  
+  // Estados para creación
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-
-  // Formulario de creación manual
-  const form = useForm<z.infer<typeof createRegistrationSchema>>({
-    resolver: zodResolver(createRegistrationSchema),
+  const createForm = useForm<z.infer<typeof registrationSchema>>({
+    resolver: zodResolver(registrationSchema),
     defaultValues: {
       document_type: "cedula",
       document_id: "",
       full_name: "",
       phone: "",
       rh: "",
-      talla_buso: "", // ✅ NUEVO
-      route_id_day1: "",
-      route_id_day2: "",
+      talla_buso: "none",
+      route_id_day1: "none",
+      route_id_day2: "none",
       access_code: "",
       registration_type: "individual",
       payment_status: "paid",
       group_id: "independiente",
     },
+  })
+
+  // Estados para edición
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const editForm = useForm<z.infer<typeof registrationSchema>>({
+    resolver: zodResolver(registrationSchema),
   })
 
   useEffect(() => {
@@ -193,7 +201,7 @@ export default function PersonManagement() {
       "Cédula": person.document_id,
       "Teléfono": person.phone,
       "RH": person.rh || "-",
-      "Talla Buso": person.talla_buso || "-", // ✅ NUEVO
+      "Talla Buso": person.talla_buso === "none" || !person.talla_buso ? "-" : person.talla_buso,
       "Ruta Día 1": getRouteName(person.route_id_day1),
       "Ruta Día 2": getRouteName(person.route_id_day2),
       "Grupo": getGroupName(person.group_id),
@@ -207,7 +215,7 @@ export default function PersonManagement() {
     toast.success("Archivo Excel descargado exitosamente")
   }
 
-  const handleCreateRegistration = async (data: z.infer<typeof createRegistrationSchema>) => {
+  const handleCreateRegistration = async (data: z.infer<typeof registrationSchema>) => {
     try {
       const registrationData = {
         document_type: data.document_type,
@@ -215,9 +223,9 @@ export default function PersonManagement() {
         full_name: data.full_name,
         phone: data.phone,
         rh: data.rh,
-        talla_buso: data.talla_buso || null, // ✅ NUEVO
-        route_id_day1: data.route_id_day1 || null,
-        route_id_day2: data.route_id_day2 || null,
+        talla_buso: data.talla_buso === "none" ? null : data.talla_buso,
+        route_id_day1: data.route_id_day1 === "none" ? null : data.route_id_day1,
+        route_id_day2: data.route_id_day2 === "none" ? null : data.route_id_day2,
         access_code: data.access_code || null,
         registration_type: data.registration_type,
         payment_status: data.payment_status,
@@ -229,11 +237,60 @@ export default function PersonManagement() {
       await firebaseClient.createRegistration(registrationData)
       toast.success("Registro creado exitosamente")
       setIsCreateOpen(false)
-      form.reset()
-      fetchPeople() // Recargar la tabla
+      createForm.reset()
+      fetchPeople()
     } catch (error) {
       console.error("Error creando registro:", error)
       toast.error("Error al crear el registro")
+    }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Abrir diálogo de edición y precargar datos
+  const openEditDialog = (person: Person) => {
+    setEditingPerson(person)
+    editForm.reset({
+      document_type: person.document_type || "cedula",
+      document_id: person.document_id,
+      full_name: person.full_name,
+      phone: person.phone || "",
+      rh: person.rh || "",
+      talla_buso: person.talla_buso || "none",
+      route_id_day1: person.route_id_day1 || "none",
+      route_id_day2: person.route_id_day2 || "none",
+      access_code: person.access_code || "",
+      registration_type: person.registration_type,
+      payment_status: person.payment_status,
+      group_id: person.group_id === "independiente" ? "independiente" : (person.group_id || ""),
+    })
+    setIsEditOpen(true)
+  }
+
+  // ✅ NUEVA FUNCIÓN: Guardar cambios de edición
+  const handleUpdateRegistration = async (data: z.infer<typeof registrationSchema>) => {
+    if (!editingPerson) return
+    try {
+      const updateData = {
+        full_name: data.full_name,
+        phone: data.phone,
+        rh: data.rh,
+        talla_buso: data.talla_buso === "none" ? null : data.talla_buso,
+        route_id_day1: data.route_id_day1 === "none" ? null : data.route_id_day1,
+        route_id_day2: data.route_id_day2 === "none" ? null : data.route_id_day2,
+        access_code: data.access_code || null,
+        registration_type: data.registration_type,
+        payment_status: data.payment_status,
+        group_id: data.registration_type === "individual" ? "independiente" : (data.group_id || "pendiente"),
+        updated_at: new Date().toISOString(),
+      }
+
+      await firebaseClient.updateRegistration(editingPerson.document_id, updateData)
+      
+      toast.success("Registro actualizado exitosamente")
+      setIsEditOpen(false)
+      fetchPeople()
+    } catch (error) {
+      console.error("Error actualizando registro:", error)
+      toast.error("Error al actualizar el registro")
     }
   }
 
@@ -258,16 +315,16 @@ export default function PersonManagement() {
                   Registra a un participante directamente desde el panel de administración.
                 </DialogDescription>
               </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleCreateRegistration)} className="space-y-4">
+              <Form {...createForm}>
+                <form onSubmit={createForm.handleSubmit(handleCreateRegistration)} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="document_type"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo de Documento</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                             </FormControl>
@@ -282,7 +339,7 @@ export default function PersonManagement() {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="document_id"
                       render={({ field }) => (
                         <FormItem>
@@ -295,7 +352,7 @@ export default function PersonManagement() {
                   </div>
 
                   <FormField
-                    control={form.control}
+                    control={createForm.control}
                     name="full_name"
                     render={({ field }) => (
                       <FormItem>
@@ -308,7 +365,7 @@ export default function PersonManagement() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
@@ -319,7 +376,7 @@ export default function PersonManagement() {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="rh"
                       render={({ field }) => (
                         <FormItem>
@@ -329,14 +386,13 @@ export default function PersonManagement() {
                         </FormItem>
                       )}
                     />
-                    {/* ✅ NUEVO: Campo Talla de Buso */}
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="talla_buso"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Talla de Buso</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value || "none"}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                             </FormControl>
@@ -357,7 +413,7 @@ export default function PersonManagement() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="route_id_day1"
                       render={({ field }) => (
                         <FormItem>
@@ -386,7 +442,7 @@ export default function PersonManagement() {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="route_id_day2"
                       render={({ field }) => (
                         <FormItem>
@@ -418,12 +474,12 @@ export default function PersonManagement() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="registration_type"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo de Registro</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                             </FormControl>
@@ -439,12 +495,12 @@ export default function PersonManagement() {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={createForm.control}
                       name="payment_status"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Estado de Pago</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                             </FormControl>
@@ -460,7 +516,7 @@ export default function PersonManagement() {
                   </div>
 
                   <FormField
-                    control={form.control}
+                    control={createForm.control}
                     name="access_code"
                     render={({ field }) => (
                       <FormItem>
@@ -591,16 +647,28 @@ export default function PersonManagement() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedPerson(person)
-                            setIsDetailsOpen(true)
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          {/* ✅ NUEVO: Botón de Editar */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditDialog(person)}
+                            title="Editar registro"
+                          >
+                            <Edit className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedPerson(person)
+                              setIsDetailsOpen(true)
+                            }}
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -639,7 +707,7 @@ export default function PersonManagement() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Talla Buso</p>
-                  <p className="font-medium">{selectedPerson.talla_buso || "-"}</p> {/* ✅ NUEVO */}
+                  <p className="font-medium">{selectedPerson.talla_buso === "none" || !selectedPerson.talla_buso ? "-" : selectedPerson.talla_buso}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Teléfono</p>
@@ -696,6 +764,234 @@ export default function PersonManagement() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ NUEVO: Edit Registration Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Registro</DialogTitle>
+            <DialogDescription>
+              Actualiza la información del participante. El número de documento no se puede modificar.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleUpdateRegistration)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="document_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Documento</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cedula">Cédula de Ciudadanía</SelectItem>
+                          <SelectItem value="tarjeta_identidad">Tarjeta de Identidad</SelectItem>
+                          <SelectItem value="pasaporte">Pasaporte</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="document_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número de Documento</FormLabel>
+                      <FormControl>
+                        <Input disabled {...field} className="bg-gray-100 cursor-not-allowed" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editForm.control}
+                name="full_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre Completo</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Teléfono</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="rh"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Sangre (RH)</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="talla_buso"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Talla de Buso</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || "none"}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No requiere</SelectItem>
+                          <SelectItem value="S">S</SelectItem>
+                          <SelectItem value="M">M</SelectItem>
+                          <SelectItem value="L">L</SelectItem>
+                          <SelectItem value="XL">XL</SelectItem>
+                          <SelectItem value="XXL">XXL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="route_id_day1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ruta Día 1 (Opcional)</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar ruta" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Sin ruta asignada</SelectItem>
+                          {routes.map((route) => (
+                            <SelectItem key={route.id} value={route.id}>{route.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="route_id_day2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ruta Día 2 (Opcional)</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar ruta" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Sin ruta asignada</SelectItem>
+                          {routes.map((route) => (
+                            <SelectItem key={route.id} value={route.id}>{route.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="registration_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Registro</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="individual">Individual</SelectItem>
+                          <SelectItem value="group_leader">Líder de Grupo</SelectItem>
+                          <SelectItem value="group_member">Miembro de Grupo</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="payment_status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado de Pago</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="paid">Pagado</SelectItem>
+                          <SelectItem value="pending">Pendiente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editForm.control}
+                name="access_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código de Acceso (Opcional)</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">Guardar Cambios</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
