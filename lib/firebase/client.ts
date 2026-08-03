@@ -44,6 +44,7 @@ interface Registration {
   full_name: string;
   phone: string;
   rh: string;
+  talla_buso?: string; // ✅ AGREGAR ESTA LÍNEA
   route_id_day1?: string;
   route_id_day2?: string;
   access_code: string;
