@@ -220,11 +220,7 @@ Quedo atento(a) a la información y el itinerario. 🥾`
             <span className="text-black font-extrabold">9:00 AM</span>
             <span className="text-gray-700 text-sm"><b className="text-orange-600">Nivel Medio:</b> Actividad de las Cavernas.</span>
           </li>
-          <li className="flex flex-col pt-2 border-t border-gray-100">
-            <span className="text-black font-extrabold">3:00 PM</span>
-            <span className="text-gray-700 text-sm">Inicio del desfile.</span>
-            <span className="text-[10px] font-semibold text-blue-600 mt-1 uppercase">📍 Desde la Virgen de las Misericordias</span>
-          </li>
+          
         </ul>
       </div>
 
