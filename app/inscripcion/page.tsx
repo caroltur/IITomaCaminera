@@ -30,6 +30,7 @@ interface Registration {
   full_name: string;
   phone: string;
   rh: string;
+  talla_buso?: string; // ✅ NUEVO
   route_id_day1?: string;
   route_id_day2?: string;
   access_code: string;
@@ -49,7 +50,6 @@ type Route = {
   available_spots_by_day: { day: number; spots: number }[]
 }
 
-// ✅ NUEVO: Tipo para las configuraciones de fechas
 type EventSettings = {
   registration_start_date: string;
   registration_end_date: string;
@@ -63,6 +63,7 @@ const walkerSchema = z.object({
   document_type: z.string().optional(),
   phone: z.string().min(7, "El teléfono del caminante es requerido").optional(),
   rh: z.string().min(1, "El RH del caminante es requerido").optional(),
+  talla_buso: z.string().optional(), // ✅ NUEVO
 })
 
 const inscriptionSchema = z.object({
@@ -71,6 +72,7 @@ const inscriptionSchema = z.object({
   full_name: z.string().min(3, "El nombre completo es requerido").optional(),
   phone: z.string().min(7, "El teléfono es requerido").optional(),
   rh: z.string().min(1, "El RH es requerido").optional(),
+  talla_buso: z.string().optional(), // ✅ NUEVO
   route_id_day1: z.string().optional(),
   route_id_day2: z.string().optional(),
   group_name: z.string().min(3, "El nombre del grupo es requerido").optional(),
@@ -96,6 +98,7 @@ export default function InscripcionPage() {
       full_name: "",
       phone: "",
       rh: "",
+      talla_buso: "", // ✅ NUEVO
       route_id_day1: "",
       route_id_day2: "",
       group_name: "",
@@ -103,18 +106,15 @@ export default function InscripcionPage() {
     },
   })
 
-  // ✅ NUEVO: Cargar fechas de configuración y verificar si están abiertas
   useEffect(() => {
     const checkRegistrationDates = async () => {
       try {
-        // Cargar configuraciones del evento
         const settings = await firebaseClient.getSettings()
         setEventDates(settings)
         
         const fechaActual = new Date()
         
         if (!settings.registration_start_date || !settings.registration_end_date) {
-          // Si no hay fechas configuradas, permitir inscripciones (compatibilidad hacia atrás)
           setInscripcionesAbiertas(true)
           return
         }
@@ -122,12 +122,10 @@ export default function InscripcionPage() {
         const fechaInicio = new Date(settings.registration_start_date)
         const fechaFin = new Date(settings.registration_end_date)
         
-        // Ajustar fechas para comparación (sin horas/minutos)
         fechaInicio.setHours(0, 0, 0, 0)
         fechaFin.setHours(23, 59, 59, 999)
         fechaActual.setHours(0, 0, 0, 0)
         
-        // Verificar si la fecha actual está dentro del rango
         const abiertas = fechaActual >= fechaInicio && fechaActual <= fechaFin
         setInscripcionesAbiertas(abiertas)
         
@@ -140,7 +138,6 @@ export default function InscripcionPage() {
         
       } catch (error) {
         console.error("Error cargando fechas de inscripción:", error)
-        // Por defecto, permitir inscripciones si hay error
         setInscripcionesAbiertas(true)
       }
     }
@@ -181,18 +178,13 @@ export default function InscripcionPage() {
     }
   }
 
-  // ✅ NUEVO: Función para formatear fechas
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return "No configurado"
     
     try {
-      // Parsear la fecha manualmente para evitar problemas de zona horaria
       const [year, month, day] = dateString.split('-').map(Number)
-      
-      // Crear fecha como mediodía local (evita problemas de cambio de día)
       const date = new Date(year, month - 1, day, 12, 0, 0)
       
-      // Formatear en español de Colombia
       const options: Intl.DateTimeFormatOptions = {
         weekday: 'long',
         year: 'numeric',
@@ -203,14 +195,11 @@ export default function InscripcionPage() {
       return date.toLocaleDateString('es-CO', options)
     } catch (error) {
       console.error("Error formateando fecha:", error)
-      // Fallback: mostrar fecha original
       return dateString
     }
   }
 
-  // Verificar código de acceso
   const handleVerification = async () => {
-    // ✅ Verificar si las inscripciones están abiertas
     if (inscripcionesAbiertas === false) {
       toast.error("El período de inscripciones está cerrado")
       return
@@ -247,6 +236,7 @@ export default function InscripcionPage() {
             full_name: existingRegistration.full_name,
             phone: existingRegistration.phone,
             rh: existingRegistration.rh,
+            talla_buso: existingRegistration.talla_buso || "", // ✅ NUEVO
             route_id_day1: existingRegistration.route_id_day1 || "",
             route_id_day2: existingRegistration.route_id_day2 || "",
             group_name: existingRegistration.group_name || "",
@@ -302,6 +292,7 @@ export default function InscripcionPage() {
         full_name: data.leader_full_name,
         phone: data.phone,
         rh: data.rh,
+        talla_buso: data.talla_buso || null, // ✅ NUEVO
         route_id_day1: data.route_id_day1,
         route_id_day2: data.route_id_day2,
         access_code: data.confirmation_code,
@@ -344,6 +335,7 @@ export default function InscripcionPage() {
         full_name: data.full_name,
         phone: data.phone,
         rh: data.rh,
+        talla_buso: data.talla_buso || null, // ✅ NUEVO
         route_id_day1: data.route_id_day1,
         route_id_day2: data.route_id_day2,
         access_code: data.confirmation_code,
@@ -398,6 +390,7 @@ export default function InscripcionPage() {
         full_name: formData.full_name || existingRegistration.full_name,
         phone: formData.phone || existingRegistration.phone,
         rh: formData.rh || existingRegistration.rh,
+        talla_buso: formData.talla_buso || existingRegistration.talla_buso || null, // ✅ NUEVO
         route_id_day1: formData.route_id_day1 || null,
         route_id_day2: formData.route_id_day2 || null,
         updated_at: new Date().toISOString(),
@@ -447,7 +440,6 @@ export default function InscripcionPage() {
 
   return (
     inscripcionesAbiertas === null ? (
-      // Cargando estado
       <div className="flex items-center justify-center min-h-screen bg-slate-900 p-4">
         <div className="bg-white p-10 md:p-16 rounded-2xl shadow-2xl text-center max-w-md w-full">
           <div className="animate-pulse">
@@ -458,7 +450,6 @@ export default function InscripcionPage() {
         </div>
       </div>
     ) : inscripcionesAbiertas ? (
-      // FORMULARIO (Inscripciones Abiertas)
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4 mb-8">
           <Button
@@ -471,7 +462,6 @@ export default function InscripcionPage() {
         </div>
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto">
-            {/* ✅ NUEVO: Mostrar período de inscripciones */}
             {eventDates && (
               <Card className="mb-6 bg-blue-50 border-blue-200">
                 <CardContent className="pt-6">
@@ -502,8 +492,6 @@ export default function InscripcionPage() {
               </p>
             </div>
 
-            {/* Resto del formulario (sin cambios en la lógica) */}
-            {/* ... mantener todo el código existente del formulario ... */}
             {verificationStep === "verify" && (
               <Card>
                 <CardHeader>
@@ -553,7 +541,6 @@ export default function InscripcionPage() {
               </Card>
             )}
 
-            {/* ... resto del código del formulario (individual, group_leader, success) ... */}
             {verificationStep === "individual" && (
               <Card>
                 <CardHeader>
@@ -619,33 +606,63 @@ export default function InscripcionPage() {
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="rh"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>RH</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej. O+" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Teléfono</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej. 3001234567" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {/* ✅ NUEVO: Talla de Buso junto con RH y Teléfono */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="rh"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>RH</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ej. O+" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="talla_buso"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Talla de Buso</FormLabel>
+                              <Select 
+                                onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                                value={field.value || "none"}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="none">No requiere</SelectItem>
+                                  <SelectItem value="S">S</SelectItem>
+                                  <SelectItem value="M">M</SelectItem>
+                                  <SelectItem value="L">L</SelectItem>
+                                  <SelectItem value="XL">XL</SelectItem>
+                                  <SelectItem value="XXL">XXL</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Teléfono</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ej. 3001234567" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       <FormField
                         control={form.control}
@@ -807,33 +824,63 @@ export default function InscripcionPage() {
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="rh"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>RH</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej. AB+" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Teléfono</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej. 3001234567" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {/* ✅ NUEVO: Talla de Buso junto con RH y Teléfono */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="rh"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>RH</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ej. AB+" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="talla_buso"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Talla de Buso</FormLabel>
+                              <Select 
+                                onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                                value={field.value || "none"}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="none">No requiere</SelectItem>
+                                  <SelectItem value="S">S</SelectItem>
+                                  <SelectItem value="M">M</SelectItem>
+                                  <SelectItem value="L">L</SelectItem>
+                                  <SelectItem value="XL">XL</SelectItem>
+                                  <SelectItem value="XXL">XXL</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Teléfono</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ej. 3001234567" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       <FormField
                         control={form.control}
@@ -941,7 +988,6 @@ export default function InscripcionPage() {
         </div>
       </div>
     ) : (
-      // MENSAJE (Inscripciones Cerradas)
       <div className="flex items-center justify-center min-h-screen bg-slate-900 p-4">
         <div className="bg-white p-10 md:p-16 rounded-2xl shadow-2xl text-center max-w-md w-full transform hover:scale-[1.01] transition-transform duration-300 border-t-4 border-green-500">
           <CalendarIcon className="h-12 w-12 text-green-600 mx-auto mb-4 animate-pulse" />
@@ -951,7 +997,6 @@ export default function InscripcionPage() {
           
           {eventDates ? (
             <>
-              
               <div className="space-y-3 text-left mb-6">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="text-sm text-gray-500">Período de inscripciones.</p>

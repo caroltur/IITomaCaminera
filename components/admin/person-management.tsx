@@ -33,6 +33,7 @@ type Person = {
   document_id: string
   phone: string
   rh?: string | null
+  talla_buso?: string | null // ✅ NUEVO: Talla de buso
   route_id_day1?: string | null
   route_id_day2?: string | null
   group_id?: string | null
@@ -50,6 +51,7 @@ const createRegistrationSchema = z.object({
   full_name: z.string().min(3, "Nombre completo requerido"),
   phone: z.string().min(7, "Teléfono requerido"),
   rh: z.string().min(1, "RH requerido"),
+  talla_buso: z.string().optional(), // ✅ NUEVO
   route_id_day1: z.string().optional(),
   route_id_day2: z.string().optional(),
   access_code: z.string().optional(),
@@ -82,6 +84,7 @@ export default function PersonManagement() {
       full_name: "",
       phone: "",
       rh: "",
+      talla_buso: "", // ✅ NUEVO
       route_id_day1: "",
       route_id_day2: "",
       access_code: "",
@@ -146,7 +149,6 @@ export default function PersonManagement() {
       )
     }
 
-    // ✅ CORREGIDO: Filtrar por ID de ruta en lugar de nombre
     if (routeFilter !== "all") {
       result = result.filter(
         (person) => person.route_id_day1 === routeFilter || person.route_id_day2 === routeFilter
@@ -191,6 +193,7 @@ export default function PersonManagement() {
       "Cédula": person.document_id,
       "Teléfono": person.phone,
       "RH": person.rh || "-",
+      "Talla Buso": person.talla_buso || "-", // ✅ NUEVO
       "Ruta Día 1": getRouteName(person.route_id_day1),
       "Ruta Día 2": getRouteName(person.route_id_day2),
       "Grupo": getGroupName(person.group_id),
@@ -212,6 +215,7 @@ export default function PersonManagement() {
         full_name: data.full_name,
         phone: data.phone,
         rh: data.rh,
+        talla_buso: data.talla_buso || null, // ✅ NUEVO
         route_id_day1: data.route_id_day1 || null,
         route_id_day2: data.route_id_day2 || null,
         access_code: data.access_code || null,
@@ -302,7 +306,7 @@ export default function PersonManagement() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
                       name="phone"
@@ -325,9 +329,32 @@ export default function PersonManagement() {
                         </FormItem>
                       )}
                     />
+                    {/* ✅ NUEVO: Campo Talla de Buso */}
+                    <FormField
+                      control={form.control}
+                      name="talla_buso"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Talla de Buso</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No requiere</SelectItem>
+                              <SelectItem value="S">S</SelectItem>
+                              <SelectItem value="M">M</SelectItem>
+                              <SelectItem value="L">L</SelectItem>
+                              <SelectItem value="XL">XL</SelectItem>
+                              <SelectItem value="XXL">XXL</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                  {/* ✅ CORREGIDO: Campos de ruta sin valor vacío */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -605,10 +632,14 @@ export default function PersonManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">RH</p>
                   <p className="font-medium">{selectedPerson.rh || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Talla Buso</p>
+                  <p className="font-medium">{selectedPerson.talla_buso || "-"}</p> {/* ✅ NUEVO */}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Teléfono</p>
