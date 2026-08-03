@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Edit, Trash2, Copy, CheckCircle, Users, User, Upload } from "lucide-react"
+import { Edit, Trash2, Copy, Users, User, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { firebaseClient } from "@/lib/firebase/client"
 
@@ -45,7 +45,6 @@ const generateCodeSchema = z.object({
   }),
 })
 
-// Esquema de edición actualizado (Punto 2: Agregado payment_number)
 const editPeopleSchema = z.object({
   people_count: z.coerce.number().min(1, "Debe haber al menos 1 persona").max(20, "Máximo 20 personas por grupo"),
   payment_number: z.string().min(1, "El número del comprobante es requerido"),
@@ -63,6 +62,7 @@ type AccessCode = {
   status: "pending" | "paid" | "used"
   created_at: string
   updated_at: string
+  payment_images?: string[]
 }
 
 export default function PaymentControl() {
@@ -80,6 +80,7 @@ export default function PaymentControl() {
       document_id: "",
       people_count: 1,
       payment_number: "",
+      account_holder: "Freiman Stiven Martinez Quintana",
     },
   })
 
@@ -118,8 +119,14 @@ export default function PaymentControl() {
         return
       }
 
+      // ✅ CORREGIDO: Generar el código alfanumérico (IND-123456 o GRP-123456)
+      const prefix = data.people_count > 1 ? "GRP" : "IND"
+      const randomNum = Math.floor(100000 + Math.random() * 900000)
+      const newAccessCode = `${prefix}-${randomNum}`
+
       const createdAccessCodeData = await firebaseClient.createAccessCode({
         ...data,
+        access_code: newAccessCode, // ✅ Añadido al payload
         payment_images: [],
         is_group: data.people_count > 1,
         status: "pending" as const,
@@ -131,15 +138,14 @@ export default function PaymentControl() {
       generateForm.reset()
       toast.success("Código generado exitosamente")
     } catch (error) {
+      console.error("Error generating code:", error)
       toast.error("Error al generar el código")
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Función de actualización (Punto 2: Actualiza personas y comprobante)
   const updateAccessCodeData = async (data: z.infer<typeof editPeopleSchema>) => {
-    
     if (!selectedAccessCode) return
     try {
       const updatedValues = {
@@ -149,16 +155,11 @@ export default function PaymentControl() {
         updated_at: new Date().toISOString()
       }
 
-      //console.log("Actualizando grupo asociado:", group.id)
-        console.log("Nuevos datos:", selectedAccessCode.document_id)
-
       await firebaseClient.updateAccessCode(selectedAccessCode.id, updatedValues)
 
       // Sincronizar con el grupo si existe
       const group = await firebaseClient.getGroupByLeaderDocument(selectedAccessCode.document_id)
-      
       if (group) {
-        
         await firebaseClient.updateGroup(group.id, { member_count: data.people_count })
       }
 
@@ -169,6 +170,7 @@ export default function PaymentControl() {
       setIsEditDialogOpen(false)
       toast.success("Información actualizada")
     } catch (error) {
+      console.error("Error updating code:", error)
       toast.error("Error al actualizar")
     }
   }
@@ -181,18 +183,45 @@ export default function PaymentControl() {
       setIsDeleteDialogOpen(false)
       toast.success("Código eliminado")
     } catch (error) {
+      console.error("Error deleting code:", error)
       toast.error("Error al eliminar")
     }
   }
 
-  const copyToClipboard = async (text: string) => {
-    await navigator.clipboard.writeText(text)
-    toast.success("Copiado")
+  // ✅ NUEVA FUNCIÓN: Copiar instrucciones formateadas tipo planilla
+  const copyInstructionsToClipboard = async (code: AccessCode) => {
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
+    
+    const text = `¡Hola! 👋
+
+Tu código de confirmación para el evento ha sido generado exitosamente.
+
+📝 *INSTRUCCIONES PARA COMPLETAR TU INSCRIPCIÓN:*
+1. Ingresa al enlace de inscripción: ${baseUrl}/inscripcion
+2. En el primer paso, ingresa tu número de documento: *${code.document_id}*
+3. Ingresa tu código de acceso: *${code.access_code}*
+4. Haz clic en "Verificar Código".
+5. Completa tus datos personales (Nombre, Teléfono, RH) y selecciona tus rutas.
+6. Haz clic en "Completar Inscripción".
+
+⚠️ *IMPORTANTE:*
+• Este código es personal e intransferible.
+• Si eres líder de grupo, deberás registrar los datos de todos tus caminantes después de verificar este código.
+• Guarda este mensaje para futuras referencias.
+
+¡Te esperamos en la aventura! 🏔️`
+
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success("Instrucciones copiadas al portapapeles ✅")
+    } catch (error) {
+      console.error("Error copying to clipboard:", error)
+      toast.error("Error al copiar al portapapeles")
+    }
   }
 
   const openEditDialog = (accessCode: AccessCode) => {
     setSelectedAccessCode(accessCode)
-    // Cargar valores actuales en el formulario
     editForm.reset({
       people_count: accessCode.people_count,
       payment_number: accessCode.payment_number || "",
@@ -205,26 +234,23 @@ export default function PaymentControl() {
     setIsDeleteDialogOpen(true)
   }
 
-  // Helpers de UI
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: "border-yellow-500 text-yellow-500",
       paid: "bg-green-500",
       used: "bg-blue-500"
     }
-    return <Badge variant={status === "pending" ? "outline" : "default"} className={styles[status] || ""}>
-      {status === "pending" ? "Pendiente" : status === "paid" ? "Pagado" : "Usado"}
-    </Badge>
-  }
-
-  const getShortAccountHolder = (fullName: string) => {
-    return fullName.includes("Freiman") ? "Freiman Martinez" : "Juan Arango"
+    return (
+      <Badge variant={status === "pending" ? "outline" : "default"} className={styles[status] || ""}>
+        {status === "pending" ? "Pendiente" : status === "paid" ? "Pagado" : "Usado"}
+      </Badge>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold ml-8">Control de Pagos</h1>
+        <h1 className="text-2xl font-bold ml-8">Control de Pagos y Códigos</h1>
         <div className="text-sm text-gray-500">Total: {accessCodes.length}</div>
       </div>
 
@@ -238,6 +264,7 @@ export default function PaymentControl() {
           <Card>
             <CardHeader>
               <CardTitle>Generar Nuevo Código</CardTitle>
+              <CardDescription>Crea un código de acceso para un participante o grupo.</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...generateForm}>
@@ -246,28 +273,28 @@ export default function PaymentControl() {
                     <FormField control={generateForm.control} name="document_id" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Documento Responsable *</FormLabel>
-                        <FormControl><Input placeholder="Ej. 123456" {...field} /></FormControl>
+                        <FormControl><Input placeholder="Ej. 1234567890" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={generateForm.control} name="people_count" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Cant. Personas *</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={1} max={20} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={generateForm.control} name="payment_number" render={({ field }) => (
                       <FormItem>
                         <FormLabel>N° Comprobante *</FormLabel>
-                        <FormControl><Input placeholder="Referencia bancaria" {...field} /></FormControl>
+                        <FormControl><Input placeholder="Referencia bancaria o Nequi" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={generateForm.control} name="account_holder" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Titular Cuenta *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="Freiman Stiven Martinez Quintana">Freiman Martinez</SelectItem>
@@ -279,6 +306,7 @@ export default function PaymentControl() {
                     )} />
                   </div>
                   <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {submitting ? "Generando..." : "Crear Código de Acceso"}
                   </Button>
                 </form>
@@ -303,39 +331,61 @@ export default function PaymentControl() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center">Cargando...</TableCell></TableRow>
-                  ) : accessCodes.map((code) => (
-                    <TableRow key={code.id}>
-                      <TableCell>{code.document_id}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <code className="text-xs bg-muted p-1">{code.access_code}</code>
-                          <Copy className="h-3 w-3 cursor-pointer" onClick={() => copyToClipboard(code.access_code)} />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {code.is_group ? <Users className="h-3 w-3 mr-1" /> : <User className="h-3 w-3 mr-1" />}
-                          {code.is_group ? `Grupo (${code.people_count})` : "Individual"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{code.payment_number}</TableCell>
-                      <TableCell>{getStatusBadge(code.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
-                          {/* PUNTO 1: Solo se editan grupos */}
-                          {code.is_group && (
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(code)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(code)}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-green-600" />
+                        <p className="mt-2 text-gray-500">Cargando códigos...</p>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : accessCodes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        No hay códigos generados aún.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    accessCodes.map((code) => (
+                      <TableRow key={code.id}>
+                        <TableCell className="font-medium">{code.document_id}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{code.access_code}</code>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                            {code.is_group ? <Users className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                            {code.is_group ? `Grupo (${code.people_count})` : "Individual"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{code.payment_number}</TableCell>
+                        <TableCell>{getStatusBadge(code.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            {/* ✅ NUEVO: Botón dedicado para copiar las instrucciones formateadas */}
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => copyInstructionsToClipboard(code)}
+                              title="Copiar instrucciones de registro para enviar al usuario"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              <span className="hidden sm:inline">Copiar Instrucciones</span>
+                            </Button>
+                            
+                            {code.is_group && (
+                              <Button variant="ghost" size="icon" onClick={() => openEditDialog(code)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(code)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -343,19 +393,19 @@ export default function PaymentControl() {
         </TabsContent>
       </Tabs>
 
-      {/* Diálogo de Edición (Punto 2: Personas + Comprobante) */}
+      {/* Diálogo de Edición */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Grupo</DialogTitle>
-            <DialogDescription>Actualiza los datos de pago y asistencia.</DialogDescription>
+            <DialogDescription>Actualiza los datos de pago y asistencia del grupo.</DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(updateAccessCodeData)} className="space-y-4">
               <FormField control={editForm.control} name="people_count" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Número de personas</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" min={1} max={20} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -380,7 +430,9 @@ export default function PaymentControl() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>¿Eliminar código?</DialogTitle>
-            <DialogDescription>Esta acción no se puede deshacer.</DialogDescription>
+            <DialogDescription>
+              Esta acción no se puede deshacer. El participante perderá su acceso.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
