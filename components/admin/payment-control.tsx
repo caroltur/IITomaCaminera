@@ -38,7 +38,7 @@ import { firebaseClient } from "@/lib/firebase/client"
 // Esquemas de validación
 const generateCodeSchema = z.object({
   document_id: z.string().min(5, "El número de documento debe tener al menos 5 caracteres"),
-  people_count: z.coerce.number().min(1, "Debe haber al menos 1 persona").max(50, "Máximo 50 personas por grupo"),
+  people_count: z.coerce.number().min(1, "Debe haber al menos 1 persona").max(60, "Máximo 60 personas por grupo"),
   payment_number: z.string().min(1, "El número del comprobante es requerido"),
   account_holder: z.enum(["Freiman Stiven Martinez Quintana", "Juan Manuel Arango Arango"], {
     errorMap: () => ({ message: "Debes seleccionar un titular de la cuenta" })
@@ -46,7 +46,7 @@ const generateCodeSchema = z.object({
 })
 
 const editPeopleSchema = z.object({
-  people_count: z.coerce.number().min(1, "Debe haber al menos 1 persona").max(50, "Máximo 50 personas por grupo"),
+  people_count: z.coerce.number().min(1, "Debe haber al menos 1 persona").max(60, "Máximo 60 personas por grupo"),
   payment_number: z.string().min(1, "El número del comprobante es requerido"),
 })
 
@@ -405,7 +405,7 @@ Tu código de confirmación para el evento ha sido generado exitosamente.
               <FormField control={editForm.control} name="people_count" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Número de personas</FormLabel>
-                  <FormControl><Input type="number" min={1} max={50} {...field} /></FormControl>
+                  <FormControl><Input type="number" min={1} max={60} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
